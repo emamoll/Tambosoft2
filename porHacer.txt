@@ -1,0 +1,3 @@
+- Generar comentarios
+- Consultas
+- Interfaz gerencia     
