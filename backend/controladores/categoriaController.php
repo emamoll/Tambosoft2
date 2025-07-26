@@ -19,31 +19,27 @@ class CategoriaController
       $nombre = trim($_POST['nombre'] ?? '');
       switch ($accion) {
         case 'registrar':
-          $nombre = $_POST['nombre'] ?? '';
-
           if (empty($nombre)) {
             return ['tipo' => 'error', 'mensaje' => 'El nombre de la categoría es obligatorio.'];
           }
 
-          // Constructor modificado
           $categoria = new Categoria(null, $nombre);
           if ($this->categoriaDAO->registrarCategoria($categoria)) {
             return ['tipo' => 'success', 'mensaje' => 'Categoría registrada con éxito.'];
           } else {
             return ['tipo' => 'error', 'mensaje' => 'Ya existe una categoria con ese nombre.'];
           }
-        // case 'modificar':
-        //   if (empty($nombre)) {
-        //     return ['tipo' => 'error', 'mensaje' => 'ID y nombre de categoría son obligatorios para modificar.'];
-        //   }
+        case 'modificar':
+          if (empty($nombre)) {
+            return ['tipo' => 'error', 'mensaje' => 'Seleccione la pastura que desea modificar.'];
+          }
 
-        //   // Constructor modificado
-        //   $categoria = new Categoria($id, $nombre);
-        //   if ($this->categoriaDAO->modificarCategoria($categoria)) {
-        //     return ['tipo' => 'success', 'mensaje' => 'Categoría modificada con éxito.'];
-        //   } else {
-        //     return ['tipo' => 'error', 'mensaje' => 'Error al modificar la categoría.'];
-        //   }
+          $categoria = new Categoria(null, $nombre);
+          if ($this->categoriaDAO->modificarCategoria($categoria)) {
+            return ['tipo' => 'success', 'mensaje' => 'Categoría modificada con éxito.'];
+          } else {
+            return ['tipo' => 'error', 'mensaje' => 'Error al modificar la categoría.'];
+          }
         case 'eliminar':
           if (empty($nombre)) {
             return ['tipo' => 'error', 'mensaje' => 'Selecciona la categoria que desea eliminar.'];
