@@ -3,31 +3,26 @@
 class Orden
 {
   private $id;
-  private $categoria_id;
+  private $almacen_id;
   private $alimento_id;
   private $cantidad;
   private $fecha_creacion;
   private $hora_creacion;
+  private $fecha_actualizacion;
+  private $hora_actualizacion;
   private $estado_id;
-  private $categoria_nombre;
-  private $alimento_nombre;
-  private $alimento_precio;
-  private $estado_nombre;
 
-  public function __construct($id = null, $categoria_id = null, $alimento_id = null, $cantidad = null, $fecha_creacion = null, $hora_creacion = null, $estado_id = null, $categoria_nombre = null, $alimento_nombre = null, $alimento_precio = null, $estado_nombre = null)
+  public function __construct($id = null, $almacen_id = null, $alimento_id = null, $cantidad = null, $fecha_creacion = null, $hora_creacion = null, $fecha_actualizacion = null, $hora_actualizacion = null, $estado_id = null, )
   {
     $this->id = $id;
-    $this->categoria_id = $categoria_id;
+    $this->almacen_id = $almacen_id;
     $this->alimento_id = $alimento_id;
     $this->cantidad = $cantidad;
-    $this->fecha_creacion = $fecha_creacion;
     $this->hora_creacion = $hora_creacion;
+    $this->fecha_creacion = $fecha_creacion;
+    $this->fecha_actualizacion = $fecha_actualizacion;
+    $this->hora_actualizacion = $hora_actualizacion;
     $this->estado_id = $estado_id;
-    $this->categoria_nombre = $categoria_nombre;
-    $this->alimento_nombre = $alimento_nombre;
-    $this->alimento_precio = $alimento_precio;
-    $this->estado_nombre = $estado_nombre;
-
   }
 
   public function getId()
@@ -35,12 +30,12 @@ class Orden
     return $this->id;
   }
 
-  public function getCategoriaId()
+  public function getAlmacen_id()
   {
-    return $this->categoria_id;
+    return $this->almacen_id;
   }
 
-  public function getAlimentoId()
+  public function getAlimento_id()
   {
     return $this->alimento_id;
   }
@@ -57,40 +52,30 @@ class Orden
 
   public function getHora_creacion()
   {
-    return $this->hora_creacion;
+    return $this->fecha_creacion;
   }
 
-  public function getEstadoId()
+  public function getFecha_actualizacion()
+  {
+    return $this->fecha_actualizacion;
+  }
+
+  public function getHora_actualizacion()
+  {
+    return $this->hora_actualizacion;
+  }
+
+  public function getEstado_id()
   {
     return $this->estado_id;
   }
 
-  public function getCategoriaNombre()
+  public function setAlmacen_id($almacen_id)
   {
-    return $this->categoria_nombre;
+    $this->almacen_id = $almacen_id;
   }
 
-  public function getAlimentoNombre()
-  {
-    return $this->alimento_nombre;
-  }
-
-  public function getAlimentoPrecio()
-  {
-    return $this->alimento_precio;
-  }
-
-  public function getEstadoNombre()
-  {
-    return $this->estado_nombre;
-  }
-
-  public function setCategoriaId($categoria_id)
-  {
-    $this->categoria_id = $categoria_id;
-  }
-
-  public function setAlimentoId($alimento_id)
+  public function setAlimento_id($alimento_id)
   {
     $this->alimento_id = $alimento_id;
   }
@@ -110,28 +95,18 @@ class Orden
     $this->hora_creacion = $hora_creacion;
   }
 
-  public function setEstadoId($estado_id)
+  public function setFecha_actualizacion($fecha_actualizacion)
   {
-    $this->estado = $estado_id;
+    $this->fecha_actualizacion = $fecha_actualizacion;
   }
 
-  public function setCategoriaNombre($categoria_nombre)
+  public function setHora_actualizacion($hora_actualizacion)
   {
-    $this->categoria_nombre = $categoria_nombre;
+    $this->hora_actualizacion = $hora_actualizacion;
   }
 
-  public function setAlimentoNombre($alimento_nombre)
+  public function setEstado_id($estado_id)
   {
-    $this->$alimento_nombre = $alimento_nombre;
-  }
-
-  public function setAlimentoPrecio($alimento_precio)
-  {
-    $this->$alimento_precio = $alimento_precio;
-  }
-
-  public function setEstadoNombre($estado_nombre)
-  {
-    $this->estado_nombre = $estado_nombre;
+    $this->estado_id = $estado_id;
   }
 }

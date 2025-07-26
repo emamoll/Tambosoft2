@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '../../../../backend/controladores/estadoController.php';
-require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
+require_once __DIR__ . '../../../../backend/controladores/almacenController.php';
 require_once __DIR__ . '../../../../backend/controladores/alimentoController.php';
 require_once __DIR__ . '../../../../backend/controladores/ordenController.php';
 require_once __DIR__ . '../../../../backend/servicios/libs/fpdf.php';
@@ -21,31 +21,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion === 'filtrar') {
 } else {
   $ordenes = $controllerOrden->obtenerOrdenes();
 }
-$estados_ids = [];
-$categoria_ids = [];
-$alimento_ids = [];
-foreach ($ordenes as $o) {
-  $estados_ids[] = $o->getEstadoId();
-  $categoria_ids[] = $o->getCategoriaId();
-  $alimento_ids[] = $o->getAlimentoId();
-}
-$estados_ids = array_unique($estados_ids);
-$categoria_ids = array_unique($categoria_ids);
-$alimento_ids = array_unique($alimento_ids);
 
+$almacenes_ids = [];
+$alimento_ids = [];
+$estados_ids = [];
+
+foreach ($ordenes as $o) {
+  $almacenes_ids[] = $o->getAlmacen_id();  // estaba mal: usabas $almacen_ids
+  $alimento_ids[] = $o->getAlimento_id();
+  $estados_ids[] = $o->getEstado_id();
+}
+
+$almacenes_ids = array_unique($almacenes_ids);  // corregido
+$alimento_ids = array_unique($alimento_ids);
+$estados_ids = array_unique($estados_ids);
 $controllerEstado = new EstadoController();
 $estados = $controllerEstado->obtenerEstados();
 
-$controllerCategoria = new CategoriaController();
-$categorias = $controllerCategoria->obtenerCategorias();
-
+$controllerAlmacen = new AlmacenController();
+$almacenes = $controllerAlmacen->obtenerAlmacenes();
 $controllerAlimento = new AlimentoController();
 $alimentos = $controllerAlimento->obtenerAlimentos();
 $ordenAModificar = null;
+
 if ($accion === 'modificar' && isset($_POST['orden_id'])) {
   $ordenAModificar = $controllerOrden->obtenerOrdenPorId($_POST['orden_id']);
 }
+
 $mensaje = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accionOrden'])) {
   $mensaje = $controllerOrden->procesarFormulario();
 
@@ -53,15 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accionOrden'])) {
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
   }
-}
-
-$campoAsociado = null;
-$almacenAsociado = null;
-if (!empty($_POST['categoria_nombre'])) {
-  $categoriaSeleccionada = $_POST['categoria_nombre'];
-  // Cargar ambos datos:
-  $campoAsociado = $controllerCategoria->obtenerCampoPorCategoriaNombre($categoriaSeleccionada);
-  $almacenAsociado = $controllerOrden->obtenerAlmacenPorCategoriaNombre($categoriaSeleccionada);
 }
 
 $estadisticas = [
@@ -74,12 +69,11 @@ $estadisticas = [
 ];
 
 foreach ($ordenes as $o) {
-  $estado_id = $o->getEstadoId();
+  $estado_id = $o->getEstado_id();
   if (isset($estadisticas[$estado_id])) {
     $estadisticas[$estado_id]++;
   }
 }
-
 
 ?>
 
@@ -124,66 +118,53 @@ foreach ($ordenes as $o) {
           <input type="hidden" name="accion" value="cambio_categoria">
           <input type="hidden" name="id" value="<?= $ordenAModificar ? $ordenAModificar->getId() : '' ?>">
           <div class="form-group select-group">
-            <select name="categoria_nombre" onchange="this.form.submit()">
-              <option value="" disabled <?= empty($_POST['categoria_nombre']) && !$ordenAModificar ? 'selected' : '' ?>
-                >Seleccione una categoría</option>
-              <?php foreach ($categorias as $c): ?>
-              <option value="<?= htmlspecialchars($c->getNombre()) ?>" <?= (
-                  ($_POST['categoria_nombre'] ?? '') === $c->getNombre() ||
-                  ($ordenAModificar && $c->getId() === $ordenAModificar->getCategoriaId())
-                ) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($c->getNombre()) ?>
+            <select name="almacen_nombre">
+              <option value="" disabled selected>Seleccione un almacen</option>
+              <?php foreach ($almacenes as $al): ?>
+              <option value="<?= htmlspecialchars($al->getNombre()) ?>">
+                <?= htmlspecialchars($al->getNombre()) ?>
               </option>
               <?php endforeach; ?>
             </select>
-            <!-- <?php if ($campoAsociado): ?>
-            <p><em>Campo:
-                <?= htmlspecialchars($campoAsociado) ?>
-              </em></p>
-            <?php endif; ?> -->
-            </div>
-            <div class="form-group select-group">
-              <select name="alimento_nombre">
-                <option value="" disabled <?= empty($_POST['alimento_nombre']) && !$ordenAModificar ? 'selected' : '' ?>>
-                  Seleccione un alimento</option>
-                <?php foreach ($alimentos as $a): ?>
-                  <option value="<?= htmlspecialchars($a->getNombre()) ?>" <?= (
-                      ($_POST['alimento_nombre'] ?? '') === $a->getNombre() ||
-                      ($ordenAModificar && $a->getId() === $ordenAModificar->getAlimentoId())
-                    ) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($a->getNombre()) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="form-group">
-              <input type="number" id="cantidad" name="cantidad"
-                value="<?= htmlspecialchars($_POST['cantidad'] ?? ($ordenAModificar ? $ordenAModificar->getCantidad() : '')) ?>"
-                placeholder=" ">
-              <label for="cantidad">Cantidad</label>
-            </div>
-            <input type="hidden" name="accion" value="crear">
-            <button type="submit" name="accionOrden" value="<?= $ordenAModificar ? 'modificar' : 'crear' ?>">
-              <?= $ordenAModificar ? 'Modificar orden' : 'Crear orden' ?>
-            </button>
-            <?php if (!empty($mensaje)): ?>
-            <?php endif; ?>
-            <?php if (!empty($mensaje)): ?>
-              <script>
-                Swal.fire({
-                  icon: '<?= $mensaje["tipo"] ?>',
-                  title: '<?= $mensaje["tipo"] === "success" ? "Éxito" : "Atención" ?>',
-                  text: <?= json_encode($mensaje["mensaje"]) ?>,
-                  confirmButtonColor: '#3085d6'
-                }).then(() => {
+          </div>
+          <div class="form-group select-group">
+            <select name="alimento_nombre">
+              <option value="" disabled selected>Seleccione un alimento</option>
+              <?php foreach ($alimentos as $al): ?>
+              <option value="<?= htmlspecialchars($al->getNombre()) ?>">
+                <?= htmlspecialchars($al->getNombre()) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group">
+            <input type="number" id="cantidad" name="cantidad"
+              value="<?= htmlspecialchars($_POST['cantidad'] ?? ($ordenAModificar ? $ordenAModificar->getCantidad() : '')) ?>"
+              placeholder=" ">
+            <label for="cantidad">Cantidad</label>
+          </div>
+          <input type="hidden" name="accion" value="crear">
+          <button type="submit" name="accionOrden" value="<?= $ordenAModificar ? 'modificar' : 'crear' ?>">
+            <?= $ordenAModificar ? 'Modificar orden' : 'Crear orden' ?>
+          </button>
+          <?php if (!empty($mensaje)): ?>
+          <?php endif; ?>
+          <?php if (!empty($mensaje)): ?>
+          <script>
+            Swal.fire({
+              icon: '<?= $mensaje["tipo"] ?>',
+              title: '<?= $mensaje["tipo"] === "success" ? "Éxito" : "Atención" ?>',
+              text: <?= json_encode($mensaje["mensaje"]) ?>,
+              confirmButtonColor: '#3085d6'
+            }).then(() => {
                   <?php if ($mensaje["tipo"] === "success"): ?>
-                    window.location.href = window.location.pathname; // recargar sin reenviar POST
+                window.location.href = window.location.pathname; // recargar sin reenviar POST
                   <?php endif; ?>
                 });
-              </script>
-            <?php endif; ?>
-          </form>
-        </div>
+          </script>
+          <?php endif; ?>
+        </form>
+      </div>
       <?php endif; ?>
 
       <!-- Formulario de Filtro -->
@@ -235,7 +216,7 @@ foreach ($ordenes as $o) {
       <thead>
         <tr>
           <th>Orden N</th>
-          <th>Categoria</th>
+          <th>Almacen</th>
           <th>Alimento</th>
           <th>Cantidad</th>
           <th>Fecha de Orden</th>
@@ -252,13 +233,24 @@ foreach ($ordenes as $o) {
                 <?= htmlspecialchars($o->getId()) ?>
               </td>
               <td>
-                <?= htmlspecialchars($o->getCategoriaNombre()) ?>
+                <?php
+                foreach ($almacenes as $alm) {
+                  if ($alm->getId() === $p->getAlmacen_id()) {
+                    echo htmlspecialchars($alm->getNombre());
+                    break;
+                  }
+                }
+                ?>
               </td>
               <td>
-                <?= htmlspecialchars($o->getAlimentoNombre()) ?>
-              </td>
-              <td>
-                <?= htmlspecialchars($o->getCantidad()) ?>
+                <?php
+                foreach ($alimentos as $ali) {
+                  if ($ali->getId() === $p->getAlimento_id()) {
+                    echo htmlspecialchars($ali->getNombre());
+                    break;
+                  }
+                }
+                ?>
               </td>
               <td>
                 <?php
@@ -271,7 +263,7 @@ foreach ($ordenes as $o) {
                 <?= htmlspecialchars($o->getHora_creacion()) ?>
               </td>
               <td class="<?php
-              $estado_id = $o->getEstadoid();
+              $estado_id = $o->getEstado_id();
               if ($estado_id == 1) {
                 echo 'estado-creada';
               } elseif ($estado_id == 2) {
@@ -286,10 +278,17 @@ foreach ($ordenes as $o) {
                 echo 'estado-cancelada';
               }
               ?>">
-                <?= htmlspecialchars($o->getEstadoNombre()) ?>
+                <?php
+                foreach ($estados as $est) {
+                  if ($est->getId() === $p->getEstado_id()) {
+                    echo htmlspecialchars($est->getNombre());
+                    break;
+                  }
+                }
+                ?>
               </td>
               <td>
-                <?php if ($o->getEstadoId() == 1): ?>
+                <?php if ($o->getEstado_id() == 1): ?>
                   <!-- Botón Modificar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">

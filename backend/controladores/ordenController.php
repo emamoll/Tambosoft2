@@ -3,7 +3,7 @@
 require_once __DIR__ . '../../DAOS/ordenDAO.php';
 require_once __DIR__ . '../../DAOS/estadoDAO.php';
 require_once __DIR__ . '../../DAOS/alimentoDAO.php';
-require_once __DIR__ . '../../DAOS/categoriaDAO.php';
+require_once __DIR__ . '../../DAOS/almacenDAO.php';
 
 class OrdenController
 {
@@ -29,17 +29,20 @@ class OrdenController
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $accionOrden = $_POST['accionOrden'] ?? '';
       $id = isset($_POST['id']) ? intval($_POST['id']) : (isset($_POST['orden_id']) ? intval($_POST['orden_id']) : null);
-      $categoria_nombre = trim($_POST['categoria_nombre'] ?? '');
+      $almacen_nombre = trim($_POST['almacen_nombre'] ?? '');
       $alimento_nombre = trim($_POST['alimento_nombre'] ?? '');
       $cantidad = trim($_POST['cantidad'] ?? '');
       $fecha_creacion = date('Y-m-d');
       date_default_timezone_set('America/Argentina/Buenos_Aires');
       $hora_creacion = date('H:i');
+      $fecha_actualizacion = date('Y-m-d');
+      date_default_timezone_set('America/Argentina/Buenos_Aires');
+      $hora_actualizacion = date('H:i');
       $estado_id = 1;
 
       switch ($accionOrden) {
         case 'crear':
-          if (empty($categoria_nombre) || empty($alimento_nombre) || empty($cantidad)) {
+          if (empty($almacen_nombre) || empty($alimento_nombre) || empty($cantidad)) {
             return ['tipo' => 'error', 'mensaje' => 'Por favor, completá todos los campos para crear la orden.'];
           }
 
@@ -47,14 +50,14 @@ class OrdenController
             return ['tipo' => 'error', 'mensaje' => 'La cantidad debe ser un número positivo.'];
           }
 
-          $categoriaDAO = new CategoriaDAO();
-          $categoria = $categoriaDAO->getCategoriaByNombre($categoria_nombre);
+          $almacenDAO = new AlmacenDAO();
+          $almacen = $almacenDAO->getAlmacenByNombre($almacen_nombre);
 
-          if (!$categoria) {
-            return ['tipo' => 'error', 'mensaje' => 'La categoria seleccionada no existe.'];
+          if (!$almacen) {
+            return ['tipo' => 'error', 'mensaje' => 'El almacen seleccionado no existe.'];
           }
 
-          $categoria_id = $categoria->getId();
+          $almacen_id = $almacen->getId();
 
           $alimentoDAO = new AlimentoDAO();
           $alimento = $alimentoDAO->getAlimentoByNombre($alimento_nombre);
@@ -65,7 +68,17 @@ class OrdenController
 
           $alimento_id = $alimento->getId();
 
-          $orden = new Orden(null, $categoria_id, $alimento_id, $cantidad, $fecha_creacion, $hora_creacion, $estado_id);
+          $orden = new Orden(
+            null,
+            $almacen_id,
+            $alimento_id,
+            $cantidad,
+            $fecha_creacion,
+            $hora_creacion,
+            $fecha_actualizacion,
+            $hora_actualizacion,
+            $estado_id
+          );
 
           if ($this->ordenDAO->registrarOrden($orden)) {
             return ['tipo' => 'success', 'mensaje' => 'Orden registrado correctamente'];
@@ -78,26 +91,26 @@ class OrdenController
             return ['tipo' => 'error', 'mensaje' => 'La orden no existe para modificar'];
           }
 
-          if (!empty($categoria_nombre)) {
-            $categoriaDAO = new CategoriaDAO();
-            $categoria = $categoriaDAO->getCategoriaByNombre($categoria_nombre);
-            if (!$categoria) {
-              return ['tipo' => 'error', 'mensaje' => 'Categoria no existe'];
+          if (!empty($almacen_nombre)) {
+            $almacenDAO = new AlmacenDAO();
+            $almacen = $almacenDAO->getAlmacenByNombre($almacen_nombre);
+            if (!$almacen) {
+              return ['tipo' => 'error', 'mensaje' => 'El almacen no existe'];
             }
-            $categoria_id_nueva = $categoria->getId();
+            $almacen_id_nuevo = $almacen->getId();
           } else {
-            $categoria_id_nueva = $ordenActual->getCategoriaId();
+            $almacen_id_nuevo = $ordenActual->getAlmacen_id();
           }
 
           if (!empty($alimento_nombre)) {
             $alimentoDAO = new AlimentoDAO();
             $alimento = $alimentoDAO->getAlimentoByNombre($alimento_nombre);
             if (!$alimento) {
-              return ['tipo' => 'error', 'mensaje' => 'Alimento no existe'];
+              return ['tipo' => 'error', 'mensaje' => 'El alimento no existe'];
             }
             $alimento_id_nuevo = $alimento->getId();
           } else {
-            $alimento_id_nuevo = $ordenActual->getAlimentoId();
+            $alimento_id_nuevo = $ordenActual->getAlimento_id();
           }
 
           $cantidadNueva = $cantidad !== '' ? $cantidad : $ordenActual->getCantidad();
@@ -109,7 +122,18 @@ class OrdenController
           $fechaNueva = date('d/m/Y');
           $horaNueva = date('H:i');
 
-          $ordenModificada = new Orden($id, $categoria_id_nueva, $alimento_id_nuevo, $cantidadNueva, $fechaNueva, $horaNueva, $estado_id);
+          $ordenModificada = new Orden(
+            $id,
+            $almacen_id_nuevo,
+            $alimento_id_nuevo,
+            $cantidadNueva,
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
+            $fechaNueva,
+            $horaNueva,
+            $estado_id
+          );
+
           if ($this->ordenDAO->modificarOrden($ordenModificada)) {
             return ['tipo' => 'success', 'mensaje' => 'Orden modificada correctamente'];
           } else {
@@ -133,7 +157,7 @@ class OrdenController
           }
 
           // Solo se puede enviar si está pendiente
-          if ($ordenActual->getEstadoId() !== 1) {
+          if ($ordenActual->getEstado_id() !== 1) {
             return ['tipo' => 'error', 'mensaje' => 'Solo se pueden enviar órdenes pendientes'];
           }
 
@@ -143,9 +167,11 @@ class OrdenController
 
           $ordenEnviada = new Orden(
             $id,
-            $ordenActual->getCategoriaId(),
-            $ordenActual->getAlimentoId(),
+            $ordenActual->getAlmacen_id(),
+            $ordenActual->getAlimento_id(),
             $ordenActual->getCantidad(),
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
             $fechaNueva,
             $horaNueva,
             $estadoNuevo_id
@@ -163,7 +189,7 @@ class OrdenController
           }
 
           // Solo se puede enviar si está pendiente
-          if ($ordenActual->getEstadoId() !== 2) {
+          if ($ordenActual->getEstado_id() !== 2) {
             return ['tipo' => 'error', 'mensaje' => 'Solo se pueden preparar órdenes enviadas'];
           }
 
@@ -173,9 +199,11 @@ class OrdenController
 
           $ordenEnviada = new Orden(
             $id,
-            $ordenActual->getCategoriaId(),
-            $ordenActual->getAlimentoId(),
+            $ordenActual->getAlmacen_id(),
+            $ordenActual->getAlimento_id(),
             $ordenActual->getCantidad(),
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
             $fechaNueva,
             $horaNueva,
             $estadoNuevo_id
@@ -193,7 +221,7 @@ class OrdenController
           }
 
           // Solo se puede enviar si está pendiente
-          if ($ordenActual->getEstadoId() !== 3) {
+          if ($ordenActual->getEstado_id() !== 3) {
             return ['tipo' => 'error', 'mensaje' => 'Solo se pueden trasladar órdenes preparadas'];
           }
 
@@ -203,9 +231,11 @@ class OrdenController
 
           $ordenEnviada = new Orden(
             $id,
-            $ordenActual->getCategoriaId(),
-            $ordenActual->getAlimentoId(),
+            $ordenActual->getAlmacen_id(),
+            $ordenActual->getAlimento_id(),
             $ordenActual->getCantidad(),
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
             $fechaNueva,
             $horaNueva,
             $estadoNuevo_id
@@ -223,7 +253,7 @@ class OrdenController
           }
 
           // Solo se puede enviar si está pendiente
-          if ($ordenActual->getEstadoId() !== 4) {
+          if ($ordenActual->getEstado_id() !== 4) {
             return ['tipo' => 'error', 'mensaje' => 'Solo se pueden entregar órdenes trasladadas'];
           }
 
@@ -233,9 +263,11 @@ class OrdenController
 
           $ordenEnviada = new Orden(
             $id,
-            $ordenActual->getCategoriaId(),
-            $ordenActual->getAlimentoId(),
+            $ordenActual->getAlmacen_id(),
+            $ordenActual->getAlimento_id(),
             $ordenActual->getCantidad(),
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
             $fechaNueva,
             $horaNueva,
             $estadoNuevo_id
@@ -252,14 +284,21 @@ class OrdenController
             return ['tipo' => 'error', 'mensaje' => 'La orden no existe para cancelar'];
           }
 
+          $fechaNueva = date('Y-m-d');
+          $horaNueva = date('H:i');
+          $estadoNuevo_id = 5;
+
+
           $ordenCancelada = new Orden(
             $id,
-            $ordenActual->getCategoriaId(),
-            $ordenActual->getAlimentoId(),
+            $ordenActual->getAlmacen_id(),
+            $ordenActual->getAlimento_id(),
             $ordenActual->getCantidad(),
-            date('Y-m-d'),
-            date('H:i'),
-            6
+            $ordenActual->getFecha_creacion(),
+            $ordenActual->getHora_creacion(),
+            $fechaNueva,
+            $horaNueva,
+            $estadoNuevo_id
           );
 
           if ($this->ordenDAO->modificarOrden($ordenCancelada)) {
@@ -287,47 +326,28 @@ class OrdenController
   public function procesarFiltro()
   {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'filtrar') {
-      $estado_id = $_POST['estado_id'] ?? [];
-      $categoria_id = $_POST['categoria_id'] ?? [];
+      $almacen_id = $_POST['almacen_id'] ?? [];
       $alimento_id = $_POST['alimento_id'] ?? [];
+      $estado_id = $_POST['estado_id'] ?? [];
 
-      $ordenes = $this->ordenDAO->getOrdenesFiltradas($estado_id, $categoria_id, $alimento_id);
+      $ordenes = $this->ordenDAO->getOrdenesFiltradas($almacen_id, $alimento_id, $estado_id);
 
-      $estadoDAO = new EstadoDAO();
-      $categoriaDAO = new CategoriaDAO();
+      $almacenDAO = new AlmacenDAO();
       $alimentoDAO = new AlimentoDAO();
+      $estadoDAO = new EstadoDAO();
 
       foreach ($ordenes as $orden) {
-        $estado = $estadoDAO->getEstadoById($orden->getEstadoId());
-        $categoria = $categoriaDAO->getCategoriaById($orden->getCategoriaId());
-        $alimento = $alimentoDAO->getAlimentoById($orden->getAlimentoId());
+        $almacen = $almacenDAO->getAlmacenById($orden->getAlmacen_id());
+        $alimento = $alimentoDAO->getAlimentoById($orden->getAlimento_id());
+        $estado = $estadoDAO->getEstadoById($orden->getEstado_id());
 
-        // Suponiendo que en Orden tienes métodos setCategoriaNombre y setAlimentoNombre
-        $orden->setEstadoNombre($estado ? $estado->getNombre() : 'Sin estado');
-        $orden->setCategoriaNombre($categoria ? $categoria->getNombre() : 'Sin categoría');
-        $orden->setAlimentoNombre($alimento ? $alimento->getNombre() : 'Sin alimento');
+        $orden->setAlmacen_id($almacen ? $almacen->getNombre() : 'Sin almacen');
+        $orden->setAlimento_id($alimento ? $alimento->getNombre() : 'Sin alimento');
+        $orden->setEstado_id($estado ? $estado->getNombre() : 'Sin estado');
       }
-
       return $ordenes;
     }
 
     return [];
-  }
-
-  public function obtenerCampoPorCategoriaNombre($nombreCategoria)
-  {
-    $categoriaDAO = new CategoriaDAO();
-    $categoria = $categoriaDAO->getCategoriaByNombre($nombreCategoria);
-    if ($categoria && $categoria->getPotrero_id()) {
-      $campoDAO = new campoDAO();
-      $campo = $campoDAO->getCampoById($categoria->getPotrero_id());
-      return $campo ? $campo->getNombre() : null;
-    }
-    return null;
-  }
-
-  public function obtenerAlmacenPorCategoriaNombre($nombreCategoria)
-  {
-    return $this->ordenDAO->obtenerAlmacenPorCategoriaNombre($nombreCategoria);
   }
 }

@@ -28,7 +28,8 @@ class OrdenCrearTabla
   {
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');
     $conn = $this->db->connect();
-    $sql = "INSERT INTO estados (nombre) VALUES ('creada'), ('enviada'), ('en preparacion'), ('en traslado'), ('entregada'), ('cancelada')";
+    $sql = "INSERT IGNORE INTO estados (nombre) 
+            VALUES ('creada'), ('enviada'), ('en preparacion'), ('en traslado'), ('entregada'), ('cancelada')";
     $conn->query($sql);
     $conn->close();
   }
@@ -39,15 +40,18 @@ class OrdenCrearTabla
     $conn = $this->db->connect();
     $sql = "CREATE TABLE IF NOT EXISTS ordenes(
             id INT PRIMARY KEY AUTO_INCREMENT,
-            categoria_id INT NOT NULL,
+            almacen_id INT NOT NULL,
             alimento_id INT NOT NULL,
             cantidad INT NOT NULL,
-            fecha_creacion DATE,
-            hora_creacion TIME,
-            estado_id INT NOT NULL, 
+            fecha_creacion DATE NOT NULL,
+            hora_creacion TIME NOT NULL,
+            fecha_actualizacion DATE NOT NULL,
+            hora_actualizacion TIME NOT NULL,
+            estado_id INT NOT NULL,
+            FOREIGN KEY (almacen_id) REFERENCES almacenes(id),
             FOREIGN KEY (alimento_id) REFERENCES alimentos(id),
-            FOREIGN KEY (categoria_id) REFERENCES categorias(id),
-            FOREIGN KEY (estado_id) REFERENCES estados(id))";
+            FOREIGN KEY (estado_id) REFERENCES estados(id)            
+            )";
     $conn->query($sql);
     $conn->close();
   }

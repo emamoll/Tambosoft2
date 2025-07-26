@@ -22,12 +22,7 @@ class OrdenDAO
 
   public function getAllOrdenes()
   {
-    $sql = "SELECT o.*, c.nombre AS categoria_nombre, a.nombre AS alimento_nombre, a.precio AS alimento_precio, e.nombre AS estado_nombre
-            FROM ordenes o
-            INNER JOIN categorias c ON o.categoria_id = c.id
-            INNER JOIN alimentos a ON o.alimento_id = a.id
-            INNER JOIN estados e ON o.estado_id = e.id
-            ORDER BY o.id";
+    $sql = "SELECT * FROM ordenes ORDER BY id";
 
     $result = $this->conn->query($sql);
 
@@ -41,16 +36,14 @@ class OrdenDAO
       // Suponiendo que tu modelo Orden acepta esos parámetros o creas un constructor más flexible
       $orden = new Orden(
         $row['id'],
-        $row['categoria_id'],
+        $row['almacen_id'],
         $row['alimento_id'],
         $row['cantidad'],
         $row['fecha_creacion'],
         $row['hora_creacion'],
-        $row['estado_id'],
-        $row['categoria_nombre'],
-        $row['alimento_nombre'],
-        $row['alimento_precio'],
-        $row['estado_nombre'],
+        $row['fecha_actualizacion'],
+        $row['hora_actualizacion'],
+        $row['estado_id']
       );
       $ordenes[] = $orden;
     }
@@ -70,10 +63,30 @@ class OrdenDAO
       return null;
     }
 
-    $stmt->bind_result($id, $categoria_id, $alimento_id, $cantidad, $fecha_creacion, $hora_creacion, $estado_id);
+    $stmt->bind_result(
+      $id,
+      $almacen_id,
+      $alimento_id,
+      $cantidad,
+      $fecha_creacion,
+      $hora_creacion,
+      $fecha_actualizacion,
+      $hora_actualizacion,
+      $estado_id
+    );
     $stmt->fetch();
 
-    return new Orden($id, $categoria_id, $alimento_id, $cantidad, $fecha_creacion, $hora_creacion, $estado_id);
+    return new Orden(
+      $id,
+      $almacen_id,
+      $alimento_id,
+      $cantidad,
+      $fecha_creacion,
+      $hora_creacion,
+      $fecha_actualizacion,
+      $hora_actualizacion,
+      $estado_id
+    );
   }
 
   public function getOrdenByEstadoId($estado_id)
@@ -86,43 +99,35 @@ class OrdenDAO
 
     $ordenes = [];
     while ($row = $result->fetch_assoc()) {
-      $ordenes[] = new Orden($row['id'], $row['categoria_id'], $row['alimento_id'], $row['cantidad'], $row['fecha_creacion'], $row['hora_creacion'], $row['estado_id']);
+      $ordenes[] = new Orden(
+        $row['id'],
+        $row['almacen_id'],
+        $row['alimento_id'],
+        $row['cantidad'],
+        $row['fecha_creacion'],
+        $row['hora_creacion'],
+        $row['fecha_actualizacion'],
+        $row['hora_actualizacion'],
+        $row['estado_id']
+      );
     }
 
     return $ordenes;
   }
 
-  public function obtenerCampoPorCategoriaId($categoria_id)
-  {
-    $sql = "SELECT c.nombre 
-            FROM categorias cat
-            JOIN potreros p ON cat.potrero_id = p.id
-            JOIN campos c ON p.campo_id = c.id
-            WHERE cat.id = ?";
-
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("i", $categoria_id);
-    $stmt->execute();
-    $stmt->bind_result($nombreCampo);
-
-    if ($stmt->fetch()) {
-      return $nombreCampo;
-    }
-
-    return null;
-  }
-
   public function registrarOrden(Orden $o)
   {
-    $sql = "INSERT INTO ordenes (categoria_id, alimento_id, cantidad, fecha_creacion, hora_creacion, estado_id) VALUES (?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO ordenes (almacen_id, alimento_id, cantidad, fecha_creacion, hora_creacion, fecha_actualizacion, hora_actualizacion, estado_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $this->conn->prepare($sql);
-    $c_i = $o->getCategoriaId();
-    $a_i = $o->getAlimentoId();
+    $alm_i = $o->getAlmacen_id();
+    $ali_i = $o->getAlimento_id();
     $c = $o->getCantidad();
     $fc = $o->getFecha_creacion();
     $hc = $o->getHora_creacion();
-    $e_i = $o->getEstadoId();
-    $stmt->bind_param("iisssi", $c_i, $a_i, $c, $fc, $hc, $e_i);
+    $fa = $o->getFecha_actualizacion();
+    $ha = $o->getHora_actualizacion();
+    $e_i = $o->getEstado_id();
+    $stmt->bind_param("iiissssi", $alm_i, $ali_i, $c, $fc, $hc, $fa, $ha, $e_i);
 
     if (!$stmt->execute()) {
       die("Error en execute (inserción): " . $stmt->error);
@@ -135,16 +140,18 @@ class OrdenDAO
 
   public function modificarOrden(Orden $o)
   {
-    $sql = "UPDATE ordenes SET categoria_id = ?, alimento_id = ?, cantidad = ?, fecha_creacion = ?, hora_creacion = ?, estado_id = ? WHERE id = ?";
+    $sql = "UPDATE ordenes SET almacen_id = ?, alimento_id = ?, cantidad = ?, fecha_creacion = ?, hora_creacion = ?,fecha_actualizacion = ?, hora_actualizacion = ?, estado_id = ? WHERE id = ?";
     $stmt = $this->conn->prepare($sql);
-    $c_i = $o->getCategoriaId();
-    $a_i = $o->getAlimentoId();
+    $alm_i = $o->getAlmacen_id();
+    $ali_i = $o->getAlimento_id();
     $c = $o->getCantidad();
     $fc = $o->getFecha_creacion();
     $hc = $o->getHora_creacion();
-    $e_i = $o->getEstadoId();
+    $fa = $o->getFecha_actualizacion();
+    $ha = $o->getHora_actualizacion();
+    $e_i = $o->getEstado_id();
     $id = $o->getId();
-    $stmt->bind_param("iiissii", $c_i, $a_i, $c, $fc, $hc, $e_i, $id);
+    $stmt->bind_param("iiissssii", $alm_i, $ali_i, $c, $fc, $hc, $fa, $ha, $e_i, $id);
 
     return $stmt->execute();
   }
@@ -167,30 +174,18 @@ class OrdenDAO
     return $stmt->execute();
   }
 
-  public function getOrdenesFiltradas($estado_id, $categoria_id, $alimento_id)
+  public function getOrdenesFiltradas($almacen_id, $alimento_id, $estado_id)
   {
-    $sql = "SELECT o.*, c.nombre AS categoria_nombre, a.nombre AS alimento_nombre, e.nombre AS estado_nombre
-            FROM ordenes o
-            INNER JOIN categorias c ON o.categoria_id = c.id
-            INNER JOIN alimentos a ON o.alimento_id = a.id
-            INNER JOIN estados e ON o.estado_id = e.id
-            WHERE 1=1";
+    $sql = "SELECT * FROM ordenes WHERE 1=1";
 
     $params = [];
     $tipos = '';
 
-    if (!empty($estado_id)) {
-      $placeholders = implode(',', array_fill(0, count($estado_id), '?'));
-      $sql .= " AND estado_id IN ($placeholders)";
-      $params = array_merge($params, $estado_id);
-      $tipos .= str_repeat('i', count($estado_id));
-    }
-
-    if (!empty($categoria_id)) {
-      $placeholders = implode(',', array_fill(0, count($categoria_id), '?'));
-      $sql .= " AND categoria_id IN ($placeholders)";
-      $params = array_merge($params, $categoria_id);
-      $tipos .= str_repeat('i', count($categoria_id));
+    if (!empty($almacen_id)) {
+      $placeholders = implode(',', array_fill(0, count($almacen_id), '?'));
+      $sql .= " AND almacen_id IN ($placeholders)";
+      $params = array_merge($params, $almacen_id);
+      $tipos .= str_repeat('i', count($almacen_id));
     }
 
     if (!empty($alimento_id)) {
@@ -199,7 +194,15 @@ class OrdenDAO
       $params = array_merge($params, $alimento_id);
       $tipos .= str_repeat('i', count($alimento_id));
     }
-    $sql .= " ORDER BY o.id";
+
+    if (!empty($estado_id)) {
+      $placeholders = implode(',', array_fill(0, count($estado_id), '?'));
+      $sql .= " AND estado_id IN ($placeholders)";
+      $params = array_merge($params, $estado_id);
+      $tipos .= str_repeat('i', count($estado_id));
+    }
+
+    $sql .= " ORDER BY id";
 
     $stmt = $this->conn->prepare($sql);
     if ($stmt === false) {
@@ -209,7 +212,7 @@ class OrdenDAO
     if (!empty($params)) {
       $bind_names[] = $tipos;
       foreach ($params as $key => $value) {
-        $bind_names[] = &$params[$key]; // pasar por referencia
+        $bind_names[] = &$params[$key];
       }
       call_user_func_array([$stmt, 'bind_param'], $bind_names);
     }
@@ -219,18 +222,16 @@ class OrdenDAO
 
     $ordenes = [];
     while ($row = $resultado->fetch_assoc()) {
-      // Crea tu objeto Orden correctamente según tu constructor
       $orden = new Orden(
         $row['id'],
-        $row['categoria_id'],
+        $row['almacen_id'],
         $row['alimento_id'],
         $row['cantidad'],
         $row['fecha_creacion'],
         $row['hora_creacion'],
-        $row['estado_id'],
-        $row['categoria_nombre'],
-        $row['alimento_nombre'],
-        $row['estado_nombre']
+        $row['fecha_actualizacion'],
+        $row['hora_actualizacion'],
+        $row['estado_id']
       );
       $ordenes[] = $orden;
     }
@@ -239,50 +240,4 @@ class OrdenDAO
 
     return $ordenes;
   }
-
-  public function obtenerCampoPorCategoriaNombre($nombreCategoria)
-  {
-    $sql = "
-        SELECT ca.nombre AS nombre_campo
-        FROM categorias c
-        JOIN potreros p ON c.potrero_id = p.id
-        JOIN campos ca ON p.campo_id = ca.id
-        WHERE c.nombre = ?
-        LIMIT 1
-    ";
-
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("s", $nombreCategoria);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-      return $row['nombre_campo'];
-    }
-    return null;
-  }
-
-  public function obtenerAlmacenPorCategoriaNombre($nombreCategoria)
-  {
-    $sql = "
-        SELECT a.nombre AS nombre_almacen
-        FROM categorias c
-        JOIN potreros p ON c.potrero_id = p.id
-        JOIN campos ca ON p.campo_id = ca.id
-        JOIN almacenes a ON a.campo_id = ca.id
-        WHERE c.nombre = ?
-        LIMIT 1
-    ";
-
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("s", $nombreCategoria);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-      return $row['nombre_almacen'];
-    }
-    return null;
-  }
-
 }
