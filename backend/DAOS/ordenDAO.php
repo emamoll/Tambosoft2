@@ -33,7 +33,6 @@ class OrdenDAO
     $ordenes = [];
 
     while ($row = $result->fetch_assoc()) {
-      // Suponiendo que tu modelo Orden acepta esos parámetros o creas un constructor más flexible
       $orden = new Orden(
         $row['id'],
         $row['almacen_id'],
@@ -174,7 +173,7 @@ class OrdenDAO
     return $stmt->execute();
   }
 
-  public function getOrdenesFiltradas($almacen_id, $alimento_id, $estado_id)
+  public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id)
   {
     $sql = "SELECT * FROM ordenes WHERE 1=1";
 
@@ -206,10 +205,12 @@ class OrdenDAO
 
     $stmt = $this->conn->prepare($sql);
     if ($stmt === false) {
-      die("Error en prepare: " . $this->conn->error);
+      error_log("Error en prepare (getOrdenesFiltradas): " . $this->conn->error);
+      return [];
     }
 
     if (!empty($params)) {
+      $bind_names = [];
       $bind_names[] = $tipos;
       foreach ($params as $key => $value) {
         $bind_names[] = &$params[$key];
@@ -217,7 +218,12 @@ class OrdenDAO
       call_user_func_array([$stmt, 'bind_param'], $bind_names);
     }
 
-    $stmt->execute();
+    if (!$stmt->execute()) {
+      error_log("Error en execute (getOrdenesFiltradas): " . $stmt->error);
+      $stmt->close();
+      return [];
+    }
+
     $resultado = $stmt->get_result();
 
     $ordenes = [];

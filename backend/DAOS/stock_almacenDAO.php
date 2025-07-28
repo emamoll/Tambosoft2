@@ -139,38 +139,48 @@ class Stock_AlmacenDAO
     }
   }
 
-  public function getAllStock_almacenesItems()
+  public function reducirStock_almacen($almacen_id, $alimento_id, $cantidad)
   {
-    $sql = "SELECT 
-                    sa.id as stock_id,
-                    sa.stock,
-                    a.nombre as alimento_nombre,
-                    alm.nombre as almacen_nombre,
-                    c.nombre as campo_nombre,
-                    alm.id as almacen_id,
-                    a.id as alimento_id
-                FROM 
-                    stock_almacenes sa
-                JOIN 
-                    alimentos a ON sa.alimento_id = a.id
-                JOIN 
-                    almacenes alm ON sa.almacen_id = alm.id
-                JOIN 
-                    campos c ON alm.campo_id = c.id
-                ORDER BY 
-                    alm.nombre, a.nombre"; // Ordenar para una mejor lectura
+    $stockActual = $this->getStock_almacenByAlmacenIdAndAlimentoId($almacen_id, $alimento_id);
 
-    $result = $this->conn->query($sql);
+    if ($stockActual) {
+      $nuevoStock = $stockActual->getStock() - $cantidad;
+      if ($nuevoStock < 0) {
+        return false; // No hay suficiente stock
+      }
+      $sql = "UPDATE stock_almacenes SET stock = ? WHERE almacen_id = ? AND alimento_id = ?";
+      $stmt = $this->conn->prepare($sql);
 
-    if (!$result) {
-      error_log("DEBUG: StockAlimentosDAO - Error al obtener todos los ítems de stock con detalles: " . $this->conn->error);
-      return [];
+      if (!$stmt) {
+        error_log("Error en la consulta: " . $this->conn->error);
+        return false;
+      }
+
+      $stmt->bind_param("iii", $nuevoStock, $almacen_id, $alimento_id);
+      return $stmt->execute();
     }
+    return false; // Entrada de stock no encontrada
+  }
 
-    $stockDetails = [];
+  public function getAlimentosConStockByAlmacenId($almacen_id)
+  {
+    $sql = "SELECT sa.alimento_id, a.nombre as alimento_nombre, sa.stock
+            FROM stock_almacenes sa
+            JOIN alimentos a ON sa.alimento_id = a.id
+            WHERE sa.almacen_id = ? AND sa.stock > 0"; // Solo devuelve ítems con stock > 0
+    $stmt = $this->conn->prepare($sql);
+    $stmt->bind_param("i", $almacen_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $alimentosConStock = [];
     while ($row = $result->fetch_assoc()) {
-      $stockDetails[] = $row;
+      $alimentosConStock[] = [
+        'id' => $row['alimento_id'],
+        'nombre' => $row['alimento_nombre'],
+        'stock' => $row['stock']
+      ];
     }
-    return $stockDetails;
+    return $alimentosConStock;
   }
 }

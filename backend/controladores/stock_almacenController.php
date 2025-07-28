@@ -99,4 +99,25 @@ class Stock_almacenController
     return $this->stock_almacenDAO->getAllStock_almacenes();
   }
 
+  public function getAlimentosByAlmacenId($almacen_id)
+  {
+    return $this->stock_almacenDAO->getAlimentosConStockByAlmacenId($almacen_id);
+  }
+
+  public function actualizarStock_almacen($almacen_id, $alimento_id, $cantidad)
+  {
+    return $this->stock_almacenDAO->actualizarStock_almacen($almacen_id, $alimento_id, $cantidad);
+  }
+
+  public function getStockByAlimentoInAlmacen($almacen_id, $alimento_id)
+  {
+    $stock_almacen = $this->stock_almacenDAO->getStock_almacenByAlmacenIdAndAlimentoId($almacen_id, $alimento_id);
+    return $stock_almacen ? $stock_almacen->getStock() : 0;
+  }
+
+  public function reducirStock($almacen_id, $alimento_id, $cantidad)
+  {
+    return $this->stock_almacenDAO->reducirStock_almacen($almacen_id, $alimento_id, $cantidad);
+  }
+
 }

@@ -171,7 +171,6 @@ class AlimentoDAO
     return $alimentos;
   }
 
-
   public function registrarAlimento(Alimento $a)
   {
     $sqlVer = "SELECT id FROM alimentos WHERE nombre = ?";

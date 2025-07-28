@@ -5,6 +5,7 @@ require_once __DIR__ . '../../../../backend/controladores/almacenController.php'
 require_once __DIR__ . '../../../../backend/controladores/alimentoController.php';
 require_once __DIR__ . '../../../../backend/controladores/ordenController.php';
 require_once __DIR__ . '../../../../backend/servicios/libs/fpdf.php';
+require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
 
 session_start();
 if (!isset($_SESSION['username']) || !isset($_SESSION['rol_id'])) {
@@ -16,34 +17,20 @@ $accion = $_POST['accion'] ?? '';
 $accionOrden = $_POST['accionOrden'] ?? '';
 
 $controllerOrden = new OrdenController();
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion === 'filtrar') {
-  $ordenes = $controllerOrden->procesarFiltro();
-} else {
-  $ordenes = $controllerOrden->obtenerOrdenes();
-}
 
-$almacenes_ids = [];
-$alimento_ids = [];
-$estados_ids = [];
-
-foreach ($ordenes as $o) {
-  $almacenes_ids[] = $o->getAlmacen_id();  // estaba mal: usabas $almacen_ids
-  $alimento_ids[] = $o->getAlimento_id();
-  $estados_ids[] = $o->getEstado_id();
-}
-
-$almacenes_ids = array_unique($almacenes_ids);  // corregido
-$alimento_ids = array_unique($alimento_ids);
-$estados_ids = array_unique($estados_ids);
 $controllerEstado = new EstadoController();
 $estados = $controllerEstado->obtenerEstados();
 
 $controllerAlmacen = new AlmacenController();
 $almacenes = $controllerAlmacen->obtenerAlmacenes();
+
 $controllerAlimento = new AlimentoController();
 $alimentos = $controllerAlimento->obtenerAlimentos();
-$ordenAModificar = null;
 
+$controllerCategoria = new CategoriaController();
+$categorias = $controllerCategoria->obtenerCategorias();
+
+$ordenAModificar = null;
 if ($accion === 'modificar' && isset($_POST['orden_id'])) {
   $ordenAModificar = $controllerOrden->obtenerOrdenPorId($_POST['orden_id']);
 }
@@ -59,13 +46,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accionOrden'])) {
   }
 }
 
+// SIMPLIFICADO: Siempre llamamos a procesarFiltro.
+// procesarFiltro() se encargará de devolver todas las órdenes si no se aplicó un filtro,
+// o las órdenes filtradas si el modal de filtro fue enviado.
+$ordenes = $controllerOrden->procesarFiltro();
+
+$filtrosAplicados = [
+  'estado_id' => $_GET['estado_id'] ?? [],
+  'almacen_id' => $_GET['almacen_id'] ?? [],
+  'alimento_id' => $_GET['alimento_id'] ?? []
+];
+
 $estadisticas = [
-  1 => 0,
-  2 => 0,
-  3 => 0,
-  4 => 0,
-  5 => 0,
-  6 => 0,
+  1 => 0, // Creada
+  2 => 0, // Enviada
+  3 => 0, // En Preparación
+  4 => 0, // En Traslado
+  5 => 0, // Entregada
+  6 => 0, // Cancelada
 ];
 
 foreach ($ordenes as $o) {
@@ -78,13 +76,13 @@ foreach ($ordenes as $o) {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tambosoft: Ordenes</title>
-  <link rel="icon" href=".../../../../img/logo2.png" type="image/png">
+  <link rel="icon" href="../../../img/logo2.png" type="image/png">
   <link rel="stylesheet" href="../../css/estilos.css" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
@@ -98,7 +96,6 @@ foreach ($ordenes as $o) {
 
 <body class="bodyHome">
   <?php require_once __DIR__ . '../../secciones/header.php'; ?>
-  <!--	--------------->
   <?php require_once __DIR__ . '../../secciones/navbar.php'; ?>
 
   <div class="main">
@@ -107,105 +104,71 @@ foreach ($ordenes as $o) {
       <form method="POST">
         <div class="botones-container">
           <button type="submit" name="accion" value="crear" class="btn btn-primary">Crear ordenes</button>
-          <button type="submit" name="accion" value="filtrar" class="btn btn-secondary">Filtrar por</button>
+          <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#filtroModal">
+            Filtrar por
+          </button>
         </div>
       </form>
 
       <?php if ($accion === 'crear' || $ordenAModificar): ?>
-      <div class="mt-4">
-        <div class="form-title">Crear orden</div>
-        <form method="POST">
-          <input type="hidden" name="accion" value="cambio_categoria">
-          <input type="hidden" name="id" value="<?= $ordenAModificar ? $ordenAModificar->getId() : '' ?>">
-          <div class="form-group select-group">
-            <select name="almacen_nombre">
-              <option value="" disabled selected>Seleccione un almacen</option>
-              <?php foreach ($almacenes as $al): ?>
-              <option value="<?= htmlspecialchars($al->getNombre()) ?>">
-                <?= htmlspecialchars($al->getNombre()) ?>
-              </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="form-group select-group">
-            <select name="alimento_nombre">
-              <option value="" disabled selected>Seleccione un alimento</option>
-              <?php foreach ($alimentos as $al): ?>
-              <option value="<?= htmlspecialchars($al->getNombre()) ?>">
-                <?= htmlspecialchars($al->getNombre()) ?>
-              </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="form-group">
-            <input type="number" id="cantidad" name="cantidad"
-              value="<?= htmlspecialchars($_POST['cantidad'] ?? ($ordenAModificar ? $ordenAModificar->getCantidad() : '')) ?>"
-              placeholder=" ">
-            <label for="cantidad">Cantidad</label>
-          </div>
-          <input type="hidden" name="accion" value="crear">
-          <button type="submit" name="accionOrden" value="<?= $ordenAModificar ? 'modificar' : 'crear' ?>">
-            <?= $ordenAModificar ? 'Modificar orden' : 'Crear orden' ?>
-          </button>
-          <?php if (!empty($mensaje)): ?>
-          <?php endif; ?>
-          <?php if (!empty($mensaje)): ?>
-          <script>
-            Swal.fire({
-              icon: '<?= $mensaje["tipo"] ?>',
-              title: '<?= $mensaje["tipo"] === "success" ? "Éxito" : "Atención" ?>',
-              text: <?= json_encode($mensaje["mensaje"]) ?>,
-              confirmButtonColor: '#3085d6'
-            }).then(() => {
+        <div class="mt-4">
+          <div class="form-title">Crear orden</div>
+          <form method="POST">
+            <input type="hidden" name="accion" value="cambio_categoria">
+            <input type="hidden" name="id" value="<?= $ordenAModificar ? $ordenAModificar->getId() : '' ?>">
+
+            <?php if ($ordenAModificar): ?>
+              <input type="hidden" id="orden_modificar_almacen_id"
+                value="<?= htmlspecialchars($ordenAModificar->getAlmacen_id()) ?>">
+              <input type="hidden" id="orden_modificar_alimento_id"
+                value="<?= htmlspecialchars($ordenAModificar->getAlimento_id()) ?>">
+              <input type="hidden" id="orden_modificar_cantidad"
+                value="<?= htmlspecialchars($ordenAModificar->getCantidad()) ?>">
+            <?php endif; ?>
+
+            <div class="form-group select-group">
+              <select name="almacen_id" id="almacen_nombre_select">
+                <option value="" disabled selected>Seleccione un almacén</option>
+                <?php foreach ($almacenes as $al): ?>
+                  <option value="<?= htmlspecialchars($al->getId()) ?>" <?= (isset($_POST['almacen_id']) && $_POST['almacen_id'] == $al->getId()) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($al->getNombre()) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-group select-group">
+              <select name="alimento_id" id="alimento_nombre_select">
+                <option value="" disabled selected>Seleccione un alimento</option>
+              </select>
+            </div>
+            <div class="form-group" id="stock_disponible_container"
+              style="display: none; margin-top: 5px; font-size: 0.85em;">
+              Stock disponible: <span id="stock_disponible" style="font-weight: bold; color: #333;"></span>
+            </div>
+            <div class="form-group">
+              <input type="number" id="cantidad" name="cantidad"
+                value="<?= htmlspecialchars($_POST['cantidad'] ?? ($ordenAModificar ? $ordenAModificar->getCantidad() : '')) ?>"
+                placeholder=" ">
+              <label for="cantidad">Cantidad</label>
+            </div>
+            <input type="hidden" name="accion" value="crear">
+            <button type="submit" name="accionOrden" value="<?= $ordenAModificar ? 'modificar' : 'crear' ?>">
+              <?= $ordenAModificar ? 'Modificar orden' : 'Crear orden' ?>
+            </button>
+            <?php if (!empty($mensaje)): ?>
+              <script>
+                Swal.fire({
+                  icon: '<?= $mensaje["tipo"] ?>',
+                  title: '<?= $mensaje["tipo"] === "success" ? "Éxito" : "Atención" ?>',
+                  text: <?= json_encode($mensaje["mensaje"]) ?>,
+                  confirmButtonColor: '#3085d6'
+                }).then(() => {
                   <?php if ($mensaje["tipo"] === "success"): ?>
-                window.location.href = window.location.pathname; // recargar sin reenviar POST
+                    window.location.href = window.location.pathname; // recargar sin reenviar POST
                   <?php endif; ?>
                 });
-          </script>
-          <?php endif; ?>
-        </form>
-      </div>
-      <?php endif; ?>
-
-      <!-- Formulario de Filtro -->
-      <?php if ($accion === 'filtrar'): ?>
-        <div class="mt-4">
-          <div class="form-title">Filtrar por</div>
-          <form method="POST">
-            <div class="mb-3">
-              <label>Estado</label><br>
-              <?php foreach ($estados as $e): ?>
-                <label class="form-check-label">
-                  <input class="form-check-input" type="checkbox" name="estado_id[]" value="<?= $e->getId() ?>"
-                    <?= (isset($_POST['estado_id']) && in_array($e->getId(), $_POST['estado_id'])) ? 'checked' : '' ?>>
-                  <?= htmlspecialchars($e->getNombre()) ?>
-                </label><br>
-              <?php endforeach; ?>
-            </div>
-            <!-- Filtro Categoría -->
-            <div class="mb-3">
-              <label>Categorías</label><br>
-              <?php foreach ($categorias as $c): ?>
-                <label class="form-check-label">
-                  <input class="form-check-input" type="checkbox" name="categoria_id[]" value="<?= $c->getId() ?>"
-                    <?= (isset($_POST['categoria_id']) && in_array($c->getId(), $_POST['categoria_id'])) ? 'checked' : '' ?>>
-                  <?= htmlspecialchars($c->getNombre()) ?>
-                </label><br>
-              <?php endforeach; ?>
-            </div>
-
-            <!-- Filtro Alimento -->
-            <div class="mb-3">
-              <label>Alimentos</label><br>
-              <?php foreach ($alimentos as $a): ?>
-                <label class="form-check-label">
-                  <input class="form-check-input" type="checkbox" name="alimento_id[]" value="<?= $a->getId() ?>"
-                    <?= (isset($_POST['alimento_id']) && in_array($a->getId(), $_POST['alimento_id'])) ? 'checked' : '' ?>>
-                  <?= htmlspecialchars($a->getNombre()) ?>
-                </label><br>
-              <?php endforeach; ?>
-            </div>
-            <button type="submit" name="accion" value="filtrar" class="btn btn-secondary">Filtrar</button>
+              </script>
+            <?php endif; ?>
           </form>
         </div>
       <?php endif; ?>
@@ -219,8 +182,8 @@ foreach ($ordenes as $o) {
           <th>Almacen</th>
           <th>Alimento</th>
           <th>Cantidad</th>
-          <th>Fecha de Orden</th>
-          <th>Hora de Orden</th>
+          <th>Fecha</th>
+          <th>Hora</th>
           <th>Estado</th>
           <th>Opciones</th>
         </tr>
@@ -233,82 +196,64 @@ foreach ($ordenes as $o) {
                 <?= htmlspecialchars($o->getId()) ?>
               </td>
               <td>
-                <?php
-                foreach ($almacenes as $alm) {
-                  if ($alm->getId() === $p->getAlmacen_id()) {
-                    echo htmlspecialchars($alm->getNombre());
-                    break;
-                  }
-                }
-                ?>
+                <?= htmlspecialchars($o->almacen_nombre ?? '') ?>
+              </td>
+              <td>
+                <?= htmlspecialchars($o->alimento_nombre ?? '') ?>
+              </td>
+              <td>
+                <?= htmlspecialchars($o->getCantidad()) ?>
               </td>
               <td>
                 <?php
-                foreach ($alimentos as $ali) {
-                  if ($ali->getId() === $p->getAlimento_id()) {
-                    echo htmlspecialchars($ali->getNombre());
-                    break;
-                  }
-                }
-                ?>
-              </td>
-              <td>
-                <?php
-                $fecha = $o->getFecha_creacion();
+                $fecha = $o->getFecha_actualizacion();
                 $fechaFormateada = date('d-m-Y', strtotime($fecha));
                 echo htmlspecialchars($fechaFormateada);
                 ?>
               </td>
               <td>
-                <?= htmlspecialchars($o->getHora_creacion()) ?>
+                <?= htmlspecialchars($o->getHora_actualizacion()) ?>
               </td>
-              <td class="<?php
-              $estado_id = $o->getEstado_id();
-              if ($estado_id == 1) {
-                echo 'estado-creada';
-              } elseif ($estado_id == 2) {
-                echo 'estado-enviada';
-              } elseif ($estado_id == 3) {
-                echo 'estado-enPreparacion';
-              } elseif ($estado_id == 4) {
-                echo 'estado-enTraslado';
-              } elseif ($estado_id == 5) {
-                echo 'estado-entregada';
-              } else {
-                echo 'estado-cancelada';
-              }
-              ?>">
-                <?php
-                foreach ($estados as $est) {
-                  if ($est->getId() === $p->getEstado_id()) {
-                    echo htmlspecialchars($est->getNombre());
-                    break;
-                  }
+              <td>
+                <span class="<?php
+                $estado_id = $o->getEstado_id();
+                if ($estado_id == 1) {
+                  echo 'estado-creada';
+                } elseif ($estado_id == 2) {
+                  echo 'estado-enviada';
+                } elseif ($estado_id == 3) {
+                  echo 'estado-enPreparacion';
+                } elseif ($estado_id == 4) {
+                  echo 'estado-enTraslado';
+                } elseif ($estado_id == 5) {
+                  echo 'estado-entregada';
+                } elseif ($estado_id == 6) {
+                  echo 'estado-cancelada';
+                } else {
+                  echo 'estado-desconocido';
                 }
-                ?>
+                ?>">
+                  <?= htmlspecialchars($o->estado_nombre ?? '') ?>
+                </span>
               </td>
               <td>
                 <?php if ($o->getEstado_id() == 1): ?>
-                  <!-- Botón Modificar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <input type="hidden" name="accion" value="modificar">
                     <button type="submit" class="btn btn-success btn-sm">Modificar</button>
                   </form>
 
-                  <!-- Botón Enviar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <button type="submit" name="accionOrden" value="enviar" class="btn btn-success btn-sm">Enviar</button>
                   </form>
 
-                  <!-- Botón Cancelar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <button type="submit" name="accionOrden" value="cancelar" class="btn btn-success btn-sm">Cancelar</button>
                   </form>
                 <?php else: ?>
-                  <!-- Si está Enviado o Cancelado, no mostramos botones -->
                   <span class="text-muted">-</span>
                 <?php endif; ?>
               </td>
@@ -316,22 +261,229 @@ foreach ($ordenes as $o) {
           <?php endforeach; ?>
         <?php else: ?>
           <tr>
-            <td colspan="3">No hay ordenes cargadas.</td>
+            <td colspan="8">No hay ordenes cargadas.</td>
           </tr>
         <?php endif; ?>
       </tbody>
     </table></br>
-    <form action="../../../backend/servicios/libs/ordenes.php" method="post" target="_blank" class="botonPDF">
-      <button type="submit" name="generar_pdf" class="btn btn-danger">Descargar</button>
+    <form action="../../../backend/servicios/libs/ordenes.php" method="GET" target="_blank" class="botonPDF">
+      <button type="submit" name="generar_pdf" class="btn btn-danger">Descargar PDF</button>
+      <?php
+      // Añadir inputs ocultos para cada filtro aplicado que viene en $_GET
+      foreach ($filtrosAplicados as $filterName => $filterValues) {
+        if (is_array($filterValues) && !empty($filterValues)) {
+          foreach ($filterValues as $value) {
+            echo '<input type="hidden" name="' . htmlspecialchars($filterName) . '[]" value="' . htmlspecialchars($value) . '">';
+          }
+        }
+      }
+      ?>
     </form>
 
-    <h2 class="titulosSecciones">Estadísticas de órdenes</h2>
+    <h2 class="titulosSecciones">Distribución de órdenes por estado</h2>
     <div style="max-width: 500px; margin: 0 auto 30px;">
       <canvas id="graficoEstados" width="400" height="400"></canvas>
     </div>
 
   </div>
+
+  <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="filtroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filtroModalLabel">Filtrar Órdenes</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="filtroForm" method="POST">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Estado</label><br>
+              <?php foreach ($estados as $e): ?>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="estado_id[]" value="<?= $e->getId() ?>"
+                    id="estado_<?= $e->getId() ?>" <?= (isset($_POST['estado_id']) && in_array($e->getId(), $_POST['estado_id'])) ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="estado_<?= $e->getId() ?>">
+                    <?= htmlspecialchars($e->getNombre()) ?>
+                  </label>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Almacenes</label><br>
+              <?php foreach ($almacenes as $al): ?>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="almacen_id[]" value="<?= $al->getId() ?>"
+                    id="almacen_<?= $al->getId() ?>" <?= (isset($_POST['almacen_id']) && in_array($al->getId(), $_POST['almacen_id'])) ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="almacen_<?= $al->getId() ?>">
+                    <?= htmlspecialchars($al->getNombre()) ?>
+                  </label>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Alimentos</label><br>
+              <?php foreach ($alimentos as $a): ?>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="alimento_id[]" value="<?= $a->getId() ?>"
+                    id="alimento_<?= $a->getId() ?>" <?= (isset($_POST['alimento_id']) && in_array($a->getId(), $_POST['alimento_id'])) ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="alimento_<?= $a->getId() ?>">
+                    <?= htmlspecialchars($a->getNombre()) ?>
+                  </label>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <div class="botones-container botones-filtros">
+            <button type="submit" class="btn btn-primary" name="aplicar_filtros" value="true">Aplicar</button>
+            <!-- <button type="button" class="btn btn-primary" id="limpiarFiltrosBtn">Limpiar Filtros</button> -->
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+      </div>
+    </div>
+  </div>
+
+
   <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const almacenSelect = document.getElementById('almacen_nombre_select');
+      const alimentoSelect = document.getElementById('alimento_nombre_select');
+      const stockDisplay = document.getElementById('stock_disponible');
+      const stockContainer = document.getElementById('stock_disponible_container');
+      const cantidadInput = document.getElementById('cantidad');
+      const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
+      const filtroForm = document.getElementById('filtroForm');
+      const ordenModificarAlmacenIdInput = document.getElementById('orden_modificar_almacen_id');
+      const ordenModificarAlimentoIdInput = document.getElementById('orden_modificar_alimento_id');
+      const ordenModificarCantidadInput = document.getElementById('orden_modificar_cantidad');
+
+      stockContainer.style.display = 'none';
+
+      function fetchAndPopulateAlimentos(almacenId, selectedAlimentoId = null, callback = null) {
+        alimentoSelect.innerHTML = '<option value="" disabled selected>Cargando alimentos...</option>';
+        stockDisplay.textContent = '';
+        stockContainer.style.display = 'none';
+
+        if (almacenId) {
+          fetch(`../../../backend/api/api.php?action=getAlimentosByAlmacen&almacenId=${almacenId}`)
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.json();
+            })
+            .then(data => {
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un alimento</option>';
+              data.forEach(alimento => {
+                const option = document.createElement('option');
+                option.value = alimento.id;
+                option.textContent = alimento.nombre;
+                alimentoSelect.appendChild(option);
+              });
+
+              if (selectedAlimentoId) {
+                alimentoSelect.value = selectedAlimentoId;
+                alimentoSelect.dispatchEvent(new Event('change'));
+              }
+
+              if (callback) callback();
+            })
+            .catch(error => {
+              console.error('Error al obtener alimentos:', error);
+              alimentoSelect.innerHTML = `<option value="" disabled selected>Error al cargar alimentos: ${error.message}</option>`;
+              stockContainer.style.display = 'none';
+            });
+        } else {
+          alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un almacén primero</option>';
+          stockDisplay.textContent = '';
+          stockContainer.style.display = 'none';
+        }
+      }
+
+      almacenSelect.addEventListener('change', function () {
+        const almacenId = this.value;
+        fetchAndPopulateAlimentos(almacenId);
+        stockDisplay.textContent = '';
+        stockContainer.style.display = 'none';
+      });
+
+      alimentoSelect.addEventListener('change', function () {
+        const almacenId = almacenSelect.value;
+        const alimentoId = this.value;
+        stockDisplay.textContent = '';
+        stockContainer.style.display = 'none';
+
+        if (almacenId && alimentoId) {
+          fetch(`../../../backend/api/api.php?action=getStockForAlimento&almacenId=${almacenId}&alimentoId=${alimentoId}`)
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.json();
+            })
+            .then(data => {
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              if (data.stock !== undefined) {
+                stockDisplay.textContent = data.stock;
+                stockContainer.style.display = 'block';
+              } else {
+                stockDisplay.textContent = '0';
+                stockContainer.style.display = 'none';
+              }
+            })
+            .catch(error => {
+              console.error('Error al obtener stock:', error);
+              stockDisplay.textContent = 'Error';
+              stockContainer.style.display = 'block';
+            });
+        }
+      });
+
+      cantidadInput.addEventListener('input', function () {
+        const requestedQuantity = parseInt(this.value);
+        const availableStock = parseInt(stockDisplay.textContent);
+
+        if (requestedQuantity > availableStock) {
+          this.setCustomValidity('La cantidad solicitada excede el stock disponible.');
+        } else {
+          this.setCustomValidity('');
+        }
+      });
+
+      // Prepopular campos si estamos en modo modificar
+      if (ordenModificarAlmacenIdInput && ordenModificarAlimentoIdInput && ordenModificarCantidadInput) {
+        const initialAlmacenId = ordenModificarAlmacenIdInput.value;
+        const initialAlimentoId = ordenModificarAlimentoIdInput.value;
+        const initialCantidad = ordenModificarCantidadInput.value;
+
+        almacenSelect.value = initialAlmacenId;
+        cantidadInput.value = initialCantidad;
+
+        fetchAndPopulateAlimentos(initialAlmacenId, initialAlimentoId);
+      }
+
+      limpiarFiltrosBtn.addEventListener('click', function () {
+        // Desmarcar todos los checkboxes
+        const checkboxes = filtroForm.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(chk => chk.checked = false);
+
+        // Crear un input oculto para indicar que se están limpiando filtros
+        const inputReset = document.createElement('input');
+        inputReset.type = 'hidden';
+        inputReset.name = 'limpiar_filtros';
+        inputReset.value = 'true';
+        filtroForm.appendChild(inputReset);
+
+        // Enviar el formulario
+        filtroForm.submit();
+      });
+      // Evitar reenvío al actualizar
+      if (window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+      }
+    });
+
+    // Gráfico Chart.js
     const total = <?= array_sum($estadisticas) ?>;
     const dataEstados = [
       <?= $estadisticas[1] ?>,
@@ -356,12 +508,10 @@ foreach ($ordenes as $o) {
       options: {
         responsive: true,
         plugins: {
-          legend: {
-            position: 'bottom'
-          },
+          legend: { position: 'bottom' },
           title: {
-            display: true,
-            text: 'Distribución de órdenes por estado'
+            // display: true,
+            // text: 'Distribución de órdenes por estado'
           },
           tooltip: {
             callbacks: {

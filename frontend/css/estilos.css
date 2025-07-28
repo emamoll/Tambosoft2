@@ -15,15 +15,18 @@ body, html {
 }
 
 /* Estilos del login */
-
+/* .main aquí es el que fue modificado para el padding-top */
 .main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100vh; /* ocupa toda la altura */
-  background-color: #f5f5f5; /* color de fondo opcional */
+  /* height: 100vh; /* REMOVIDO o ajustado si el contenido puede ser más largo que la pantalla */
+  background-color: #f5f5f5;
   padding: 20px;
+  padding-top: 100px; /* AÑADIDO: Espacio para el header fijo (altura del header + algo de margen) */
   box-sizing: border-box;
+  min-height: 100vh; /* Para que ocupe al menos toda la altura si el contenido es corto */
+  width: 100%; /* Asegurar que ocupe todo el ancho disponible */
 }
 
 .inputIndex{
@@ -102,7 +105,7 @@ body, html {
   color: #333;
   font-family: inherit;
   font-size: 16px;
-  appearance: none; 
+  appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
 }
@@ -148,13 +151,13 @@ html,
 }
 
 .mensajeBienvenida {
-  margin-top: 15px;
+  margin-top: 63px;
   text-align: center;
 }
 
 nav {
   height: 5%;
-  margin-top: -145px;
+  margin-top: -145px; /* Esto probablemente se ajuste con position: fixed */
   margin-right: 10px;
 }
 
@@ -173,16 +176,19 @@ nav a:hover {
   color: white;
 }
 
-/* Estilos del header */
-
+/* Estilos del header - AHORA FIJO */
 .bordeH {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--background-principal);
   padding: 10px 20px;
-  position: relative;
-  z-index: 1;
+  position: fixed; /* CAMBIO CLAVE: Hace que el header sea fijo */
+  top: 0;          /* Lo fija en la parte superior */
+  left: 0;         /* Lo fija a la izquierda */
+  width: 100%;     /* Ocupa todo el ancho */
+  z-index: 1000;   /* Asegura que esté por encima de todo lo demás */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Opcional: sombra para destacarlo */
 }
 
 .left-header {
@@ -195,7 +201,7 @@ nav a:hover {
   font-size: 28px;
   color: white;
   cursor: pointer;
-  z-index: 1;
+  z-index: 1; /* z-index dentro de left-header */
 }
 
 .logo {
@@ -204,15 +210,15 @@ nav a:hover {
   transform: translateY(-15px); /* ajustado para que quede centrado respecto al icono */
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
   transition: transform 0.2s ease;
-  position: absolute;
+  position: absolute; /* Para posicionar el logo dentro del header fijo */
   top: -4px;
-  left: 50px; 
-  z-index: 1;
+  left: 50px;
+  z-index: 1001; /* Asegurar que el logo este por encima de todo en el header */
 }
 
 .logo:hover {
   transform: translateY(-17px) scale(1.05);
-  filter: drop-shadow(1px 5px 10px rgba(0, 0, 0, 0.7));
+  filter: drop_shadow(1px 5px 10px rgba(0, 0, 0, 0.7));
 }
 
 .nav-items ul {
@@ -231,49 +237,59 @@ li {
   justify-content: flex-end;
 }
 
+/* La capa de fondo semitransparente para el menú */
 .capa {
-  position: fixed;
+  position: fixed; /* Asegura que la capa esté fija */
   width: 100%;
   height: 100vh;
-  background: var(--fondo-background);
-  z-index: -1;
+  background: rgba(0,0,0,0.5); /* Oscurece el fondo cuando el menú está abierto */
+  z-index: 998; /* Debe estar entre el menú lateral y el contenido principal */
   top: 0;
   left: 0;
-}
-
-/*Menù lateral*/
-#btn-menu {
-  display: none;
-}
-.container-menu {
-  position: absolute;
-  z-index: 0;
-  top: 183px; 
-  left: 0;
-  bottom: 0;  
-  width: 100%;
-  background: var(--fondo-background);
   opacity: 0;
   visibility: hidden;
   transition: all 500ms ease;
 }
+
+#btn-menu:checked ~ .capa {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Menú lateral - AHORA FIJO */
+#btn-menu {
+  display: none;
+}
+.container-menu {
+  position: fixed; /* CAMBIO CLAVE: Hace que el menú lateral sea fijo */
+  z-index: 999;    /* Por debajo del header, pero por encima del contenido */
+  top: 120px;      /* Ajusta este valor para que empiece justo debajo del header (aprox. la altura del header) */
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 250px; /* Mantener el ancho máximo del menú */
+  background: var(--fondo-background);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 500ms ease;
+  transform: translateX(-100%); /* Oculta el menú a la izquierda por defecto */
+}
 #btn-menu:checked ~ .container-menu {
   opacity: 1;
   visibility: visible;
+  transform: translateX(0%); /* Desliza el menú a la vista */
 }
 .cont-menu {
   width: 100%;
   max-width: 250px;
   background: linear-gradient(190deg, #549ddb, #084a83);
-  background: gr;
-  height: 100vh;
+  /* background: gr; // Corregido: 'gr' no es un valor válido */
+  height: 100vh; /* Ajustar si se quiere que el menú no ocupe toda la altura */
   position: relative;
   transition: all 500ms ease;
-  transform: translateX(-100%);
+  transform: translateX(0%); /* Inicia visible, se esconde con el translateX del padre */
 }
-#btn-menu:checked ~ .container-menu .cont-menu {
-  transform: translateX(0%);
-}
+
 .cont-menu nav {
   transform: translateY(15%);
 }
@@ -281,13 +297,18 @@ li {
   display: block;
   text-decoration: none;
   padding: 20px;
-  /* color: #c7c7c7; */
+  /* color: #c7c7c7; */ /* Asegúrate de que no haya colores conflictivos aquí */
   border-left: 5px solid transparent;
   transition: all 400ms ease;
 }
 
 .primerItem {
   margin-top: 10%;
+}
+
+.primerItemGerencia{
+  margin-top: 35%;
+  margin-bottom: -20%;
 }
 
 .cont-menu nav a:hover {
@@ -311,6 +332,10 @@ li {
   gap: 15px;
 }
 
+.botones-filtros{
+  margin: 10px;
+}
+
 .botones-container button {
   width: 100%;
   padding: 12px;
@@ -328,9 +353,9 @@ li {
   cursor: pointer;
   background: linear-gradient(-135deg, #084a83, #549ddb);
   transition: all 0.3s ease;
-  border-radius: 50%;
-  height: 100%;
-  width: 100%;
+  border-radius: 50%; /* Esto parece incorrecto para un botón, normalmente es 0 */
+  height: 100%; /* Esto es muy agresivo, puede deformar el botón */
+  width: 100%; /* Esto es muy agresivo, puede deformar el botón */
   outline: none;
   font-size: 17px;
   border: 1px solid lightgrey;
@@ -349,6 +374,7 @@ li {
 .titulosSecciones {
   text-align: center;
   margin-bottom: 20px;
+  z-index: 5;
 }
 
 .seccionPotrero{
@@ -358,9 +384,10 @@ li {
   z-index: 1;
 }
 
+/* Tabla - Corregido margen y alineación vertical */
 table {
   width: 80%;
-  margin-top: 0 auto 40px auto;
+  margin: 0 auto 40px auto; /* Corregido de margin-top a margin para sintaxis correcta */
   border-collapse: collapse;
   font-family: Arial, sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -397,6 +424,7 @@ thead th {
 tbody td {
   padding: 12px;
   border-bottom: 1px solid #ddd;
+  vertical-align: middle; /* Asegura la alineación vertical de todo el contenido de la celda */
 }
 
 tbody tr:nth-child(even) {
@@ -409,46 +437,77 @@ tbody tr:nth-child(even) {
   margin-bottom: 40px;
 }
 
-/* Estilos para los estados */
-.estado-creada {
-  background-color: #a81d6a !important;
+/* Estilos para los estados (aplicados al SPAN dentro del TD) */
+.estado-creada,
+.estado-enviada,
+.estado-enPreparacion,
+.estado-enTraslado,
+.estado-entregada,
+.estado-cancelada {
   color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Colores de fondo específicos para cada estado */
+.estado-creada {
+  background-color: #a81d6a;
 }
 
 .estado-enviada {
-  background-color: #1d6ea8 !important;
-  color: white;
+  background-color: #1d6ea8;
 }
 
 .estado-enPreparacion {
-  background-color: #e6df1c !important;
-  color: white;
+  background-color: #e6df1c;
 }
 
 .estado-enTraslado {
-  background-color: #e6661c !important;
-  color: white;
+  background-color: #e6661c;
 }
 
 .estado-entregada {
-  background-color: #5cb85c !important;
-  color: white;
+  background-color: #5cb85c;
 }
 
 .estado-cancelada {
-  background-color: #db3630 !important;
-  color: white;
+  background-color: #db3630;
 }
 
-.botonPDF{
-  display: flex !important;
-  justify-content: flex-end !important;
+.botonPDF {
+  text-align: center; /* Alinea el contenido (botón) a la derecha */
+  width: 80%; /* Para que el contenedor de PDF tenga el mismo ancho que la tabla */
+  margin: 0 auto 20px auto; /* Centra el contenedor y le da margen inferior */
+  z-index: 5;
+}
+
+.botonPDF button { /* Estilo específico para el botón dentro de .botonPDF */
+  width: auto; /* Permitir que el botón tenga un ancho que se ajuste a su contenido */
+  max-width: 200px; /* Limitar el ancho máximo del botón si se vuelve muy grande */
+  /* Puedes añadir más estilos de padding si lo deseas, por ejemplo: */
+  /* padding: 8px 15px; */
+}
+
+/* Estilos para el stock disponible */
+#stock_disponible_container{
+  margin-top: 5px;
+  font-size: 0.85em; /* Un poco más grande que 0.75 para mejor legibilidad */
+  color: #565656;
+}
+
+#stock_disponible{
+  font-weight: bold;
+  color: #565656;
 }
 
 
-/* Estilos para dispositivos */
+/* Estilos para dispositivos móviles (media queries) */
 
 @media (max-width: 768px) {
+  /* Oculta los ítems de navegación en pantallas pequeñas (si nav-items es parte del header) */
   .nav-items {
     display: none;
   }
@@ -458,14 +517,54 @@ tbody tr:nth-child(even) {
     transform: translateY(-10px);
   }
 
-  @media (max-width: 768px) {
   .form-container {
-    padding: 20px;  
-    width: 90%; 
+    padding: 20px;
+    width: 90%;
   }
 
   .logoIndex {
-    max-width: 180px;  
+    max-width: 180px;
   }
-}
+
+  /* Ajustes específicos para el menú lateral en pantallas pequeñas */
+  .container-menu {
+    width: 250px; /* Ancho fijo para el menú en móvil */
+    transform: translateX(-100%); /* Asegura que esté oculto por defecto */
+    z-index: 1000; /* Lo pone por encima del contenido principal */
+  }
+
+  /* Cuando el menú está abierto, se desliza desde la izquierda y superpone el contenido */
+  #btn-menu:checked ~ .container-menu {
+    transform: translateX(0%);
+  }
+
+  /* Asegura que el contenido principal NO se mueva horizontalmente cuando el menú está abierto */
+  #btn-menu:checked ~ .main {
+    transform: translateX(0%); /* Anula el transform que empuja el main */
+    padding-left: 20px; /* Mantiene el padding original */
+  }
+
+  /* Fuerza el reset de cualquier transform anidado en las tablas */
+  #btn-menu:checked ~ .main #tablaContainer,
+  #btn-menu:checked ~ .main #tablaContainerPo {
+    transform: translateX(0) !important; /* Fuerza el reset para estas tablas específicas */
+  }
+
+  /* La capa semitransparente debe estar por debajo del menú pero por encima del main */
+  .capa {
+    z-index: 999; /* Por debajo del container-menu (1000) pero por encima del main */
+  }
+
+  /* Hacer la tabla responsive con scroll horizontal */
+  .tabla-responsive-wrapper { /* Clase que debe envolver a la tabla en el HTML */
+    width: 100%;
+    overflow-x: auto; /* Permite el scroll horizontal si la tabla es muy ancha */
+    -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+  }
+
+  /* La tabla misma puede necesitar un ancho mínimo para evitar que las columnas colapsen demasiado */
+  table.tabla {
+    min-width: 700px; /* Ajusta este valor si tus tablas son más anchas */
+    width: 100%; /* Asegura que la tabla ocupe el 100% de su contenedor scrollable */
+  }
 }
