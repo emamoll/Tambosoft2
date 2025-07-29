@@ -128,7 +128,7 @@ foreach ($ordenes as $o) {
 
             <div class="form-group select-group">
               <select name="almacen_id" id="almacen_nombre_select">
-                <option value="" disabled selected>Seleccione un almacén</option>
+                <option value="" disabled selected>Seleccione un campo</option>
                 <?php foreach ($almacenes as $al): ?>
                   <option value="<?= htmlspecialchars($al->getId()) ?>" <?= (isset($_POST['almacen_id']) && $_POST['almacen_id'] == $al->getId()) ? 'selected' : '' ?>>
                     <?= htmlspecialchars($al->getNombre()) ?>
@@ -179,7 +179,7 @@ foreach ($ordenes as $o) {
       <thead>
         <tr>
           <th>Orden N</th>
-          <th>Almacen</th>
+          <th>Campo</th>
           <th>Alimento</th>
           <th>Cantidad</th>
           <th>Fecha</th>
@@ -309,7 +309,7 @@ foreach ($ordenes as $o) {
               <?php endforeach; ?>
             </div>
             <div class="mb-3">
-              <label class="form-label">Almacenes</label><br>
+              <label class="form-label">Campos</label><br>
               <?php foreach ($almacenes as $al): ?>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="almacen_id[]" value="<?= $al->getId() ?>"

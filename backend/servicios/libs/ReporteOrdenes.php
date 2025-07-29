@@ -31,7 +31,7 @@ $pdf->Ln(5);
 // Encabezado del PDF (Debe coincidir con la tabla de Gerencia)
 $pdf->SetFont('Arial', 'B', 9); // Fuente más pequeña para que quepan todos los encabezados
 $pdf->Cell(10, 10, 'N', 1);
-$pdf->Cell(25, 10, utf8_decode('Almacén'), 1); // Ancho ajustado
+$pdf->Cell(25, 10, utf8_decode('Campo'), 1); // Ancho ajustado
 $pdf->Cell(30, 10, 'Alimento', 1); // Ancho ajustado
 $pdf->Cell(20, 10, 'Cantidad', 1);
 $pdf->Cell(25, 10, 'P. Unitario', 1); // Ajustado a "P. Unitario"
@@ -82,5 +82,5 @@ $pdf->Cell(35 + 20, 10, '', 1); // Celda vacía que cubre las columnas de Fecha 
 $pdf->Ln();
 
 ob_end_clean(); // Limpiar el buffer de salida
-$pdf->Output('I', 'ReporteOrdenes.pdf'); // Salida del PDF
+$pdf->Output('I', 'Reporte de Ordenes Entregadas'); // Salida del PDF
 exit;
