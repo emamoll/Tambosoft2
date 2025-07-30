@@ -615,9 +615,9 @@ foreach ($ordenes as $o) {
               confirmButtonColor: '#3085d6'
             });
           } else {
-            document.getElementById('viewCancelDate').textContent = data.fecha_cancelacion;
-            document.getElementById('viewCancelHour').textContent = data.hora_cancelacion;
-            document.getElementById('viewCancelDescription').textContent = data.descripcion_cancelacion;
+            document.getElementById('viewCancelDate').textContent = data.fecha;
+            document.getElementById('viewCancelHour').textContent = data.hora;
+            document.getElementById('viewCancelDescription').textContent = data.descripcion;
             const viewCancelReasonModal = new bootstrap.Modal(document.getElementById('viewCancelReasonModal'));
             viewCancelReasonModal.show();
           }
