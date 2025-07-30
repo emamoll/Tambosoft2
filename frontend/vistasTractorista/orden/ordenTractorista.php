@@ -209,7 +209,7 @@ foreach ($ordenes as $o) {
       </tbody>
     </table></br>
   </div>
-  
+
   <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="filtroModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -269,8 +269,7 @@ foreach ($ordenes as $o) {
     </div>
   </div>
 
-  <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel"
-    aria-hidden="true">
+  <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
