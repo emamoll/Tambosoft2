@@ -89,6 +89,25 @@ foreach ($ordenes as $o) {
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+  <script>
+    // Variable global para almacenar el formulario actual
+    let currentCancelForm = null;
+
+    // La función showCancelModal es global para ser llamada por el onsubmit en el HTML
+    function showCancelModal(form) {
+      currentCancelForm = form; // Guarda una referencia al formulario
+      // document.getElementById('cancelReasonModal') YA EXISTIRÁ cuando se muestre el modal por primera vez.
+      const cancelReasonModal = new bootstrap.Modal(document.getElementById('cancelReasonModal'));
+      cancelReasonModal.show();
+      // Limpiar el textarea CADA VEZ que se abre el modal.
+      // Aquí, document.getElementById('cancelReasonTextarea') puede ser null si el modal no se ha cargado en el DOM aún.
+      // Pero este código solo se ejecuta cuando showCancelModal es llamada (al hacer clic en "Cancelar"),
+      // y para entonces el modal y sus elementos ya deberían estar en el DOM.
+      document.getElementById('cancelReasonTextarea').value = '';
+      return false; // Previene el envío inmediato del formulario
+    }
+  </script>
 </head>
 
 <body class="bodyHome">
@@ -261,7 +280,6 @@ foreach ($ordenes as $o) {
           </div>
           <div class="botones-container botones-filtros">
             <button type="submit" class="btn btn-primary" name="aplicar_filtros" value="true">Aplicar</button>
-            <!-- <button type="button" class="btn btn-primary" id="limpiarFiltrosBtn">Limpiar Filtros</button> -->
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>
         </form>
@@ -269,7 +287,8 @@ foreach ($ordenes as $o) {
     </div>
   </div>
 
-  <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel" aria-hidden="true">
+  <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -277,20 +296,76 @@ foreach ($ordenes as $o) {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <textarea class="form-control" id="cancelReasonTextarea" rows="3"
-            placeholder="Ingresá el motivo de la cancelación"></textarea>
+          <div class="mb-3">
+            <label for="cancelReasonTextarea" class="form-label">Por favor, ingrese el motivo de la cancelación:</label>
+            <textarea class="form-control" id="cancelReasonTextarea" rows="3"></textarea>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          <button type="button" class="btn btn-primary" id="confirmCancelBtn">Confirmar Cancelación</button>
+          <button type="button" class="btn btn-danger" id="confirmCancelBtn">Confirmar Cancelación</button>
         </div>
       </div>
     </div>
   </div>
 
-
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      // === INICIO DEL CÓDIGO DE CANCELACIÓN (listeners de DOM) ===
+      // Estos listeners se adjuntan solo cuando el DOM está completamente cargado
+      document.getElementById('confirmCancelBtn').addEventListener('click', function () {
+        const cancelDescription = document.getElementById('cancelReasonTextarea').value;
+
+        if (cancelDescription.trim() === '') {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Motivo Requerido',
+            text: 'Por favor, ingresa el motivo de la cancelación antes de confirmar.',
+            confirmButtonText: 'Entendido'
+          });
+          return;
+        }
+
+        if (currentCancelForm) {
+          const ordenId = currentCancelForm.elements.orden_id.value;
+          const hiddenDescriptionInput = document.getElementById(`cancel_description_${ordenId}`);
+          if (hiddenDescriptionInput) {
+            hiddenDescriptionInput.value = cancelDescription;
+          } else {
+            console.error('Input oculto de descripción no encontrado para la orden:', ordenId);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error Interno',
+              text: 'No se pudo asociar el motivo a la orden. Contacte a soporte.',
+              confirmButtonColor: '#3085d6'
+            });
+            return;
+          }
+
+          const cancelReasonModalInstance = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
+          if (cancelReasonModalInstance) {
+            cancelReasonModalInstance.hide();
+          }
+
+          currentCancelForm.submit();
+        } else {
+          console.error('No hay formulario de cancelación actual establecido.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error Interno',
+            text: 'Hubo un problema al procesar la cancelación. Intente de nuevo.',
+            confirmButtonColor: '#3085d6'
+          });
+        }
+      });
+
+      document.getElementById('cancelReasonModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('cancelReasonTextarea').value = '';
+      });
+      // === FIN DEL CÓDIGO DE CANCELACIÓN (listeners de DOM) ===
+
+
+      // Tu código JavaScript existente para filtros, stock, etc.
       const almacenSelect = document.getElementById('almacen_nombre_select');
       const alimentoSelect = document.getElementById('alimento_nombre_select');
       const stockDisplay = document.getElementById('stock_disponible');
@@ -304,210 +379,86 @@ foreach ($ordenes as $o) {
 
       stockContainer.style.display = 'none';
 
+      // ... (el resto de tus funciones y event listeners que acceden al DOM) ...
       function fetchAndPopulateAlimentos(almacenId, selectedAlimentoId = null, callback = null) {
-        alimentoSelect.innerHTML = '<option value="" disabled selected>Cargando alimentos...</option>';
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
-
-        if (almacenId) {
-          fetch(`../../../backend/api/api.php?action=getAlimentosByAlmacen&almacenId=${almacenId}`)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.json();
-            })
-            .then(data => {
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un alimento</option>';
-              data.forEach(alimento => {
-                const option = document.createElement('option');
-                option.value = alimento.id;
-                option.textContent = alimento.nombre;
-                alimentoSelect.appendChild(option);
-              });
-
-              if (selectedAlimentoId) {
-                alimentoSelect.value = selectedAlimentoId;
-                alimentoSelect.dispatchEvent(new Event('change'));
-              }
-
-              if (callback) callback();
-            })
-            .catch(error => {
-              console.error('Error al obtener alimentos:', error);
-              alimentoSelect.innerHTML = `<option value="" disabled selected>Error al cargar alimentos: ${error.message}</option>`;
-              stockContainer.style.display = 'none';
-            });
-        } else {
-          alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un almacén primero</option>';
-          stockDisplay.textContent = '';
-          stockContainer.style.display = 'none';
-        }
+        // ... (tu código) ...
       }
 
       almacenSelect.addEventListener('change', function () {
-        const almacenId = this.value;
-        fetchAndPopulateAlimentos(almacenId);
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
+        // ... (tu código) ...
       });
 
       alimentoSelect.addEventListener('change', function () {
-        const almacenId = almacenSelect.value;
-        const alimentoId = this.value;
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
-
-        if (almacenId && alimentoId) {
-          fetch(`../../../backend/api/api.php?action=getStockForAlimento&almacenId=${almacenId}&alimentoId=${alimentoId}`)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.json();
-            })
-            .then(data => {
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              if (data.stock !== undefined) {
-                stockDisplay.textContent = data.stock;
-                stockContainer.style.display = 'block';
-              } else {
-                stockDisplay.textContent = '0';
-                stockContainer.style.display = 'none';
-              }
-            })
-            .catch(error => {
-              console.error('Error al obtener stock:', error);
-              stockDisplay.textContent = 'Error';
-              stockContainer.style.display = 'block';
-            });
-        }
+        // ... (tu código) ...
       });
 
       cantidadInput.addEventListener('input', function () {
-        const requestedQuantity = parseInt(this.value);
-        const availableStock = parseInt(stockDisplay.textContent);
-
-        if (requestedQuantity > availableStock) {
-          this.setCustomValidity('La cantidad solicitada excede el stock disponible.');
-        } else {
-          this.setCustomValidity('');
-        }
+        // ... (tu código) ...
       });
 
-      // Prepopular campos si estamos en modo modificar
       if (ordenModificarAlmacenIdInput && ordenModificarAlimentoIdInput && ordenModificarCantidadInput) {
-        const initialAlmacenId = ordenModificarAlmacenIdInput.value;
-        const initialAlimentoId = ordenModificarAlimentoIdInput.value;
-        const initialCantidad = ordenModificarCantidadInput.value;
-
-        almacenSelect.value = initialAlmacenId;
-        cantidadInput.value = initialCantidad;
-
-        fetchAndPopulateAlimentos(initialAlmacenId, initialAlimentoId);
+        // ... (tu código) ...
       }
 
       limpiarFiltrosBtn.addEventListener('click', function () {
-        // Desmarcar todos los checkboxes
-        const checkboxes = filtroForm.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(chk => chk.checked = false);
-
-        // Crear un input oculto para indicar que se están limpiando filtros
-        const inputReset = document.createElement('input');
-        inputReset.type = 'hidden';
-        inputReset.name = 'limpiar_filtros';
-        inputReset.value = 'true';
-        filtroForm.appendChild(inputReset);
-
-        // Enviar el formulario
-        filtroForm.submit();
+        // ... (tu código) ...
       });
-      // Evitar reenvío al actualizar
+
       if (window.history.replaceState) {
         window.history.replaceState(null, null, window.location.href);
       }
-    });
 
-    // Gráfico Chart.js
-    const total = <?= array_sum($estadisticas) ?>;
-    const dataEstados = [
-      <?= $estadisticas[1] ?>,
-      <?= $estadisticas[2] ?>,
-      <?= $estadisticas[3] ?>,
-      <?= $estadisticas[4] ?>,
-      <?= $estadisticas[5] ?>,
-      <?= $estadisticas[6] ?>
-    ];
+      // Para manejar los mensajes de SweetAlert2 después de una redirección PRG
+      const mensajeSwal = <?= json_encode($mensaje); ?>;
+      if (mensajeSwal) {
+        Swal.fire({
+          icon: mensajeSwal.type,
+          title: mensajeSwal.title,
+          text: mensajeSwal.text,
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
 
-    const ctx = document.getElementById('graficoEstados').getContext('2d');
-    new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['Creada', 'Enviada', 'En Preparacion', 'En Traslado', 'Entregada', 'Cancelada'],
-        datasets: [{
-          label: 'Órdenes por estado',
-          data: dataEstados,
-          backgroundColor: ['#a81d6a', '#1d6ea8', '#e6df1c', '#e6661c', '#5cb85c', '#db3630']
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom' },
-          title: {
-            display: true,
-            text: 'Distribución de órdenes por estado'
-          },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const value = context.raw;
-                const percentage = (value / total * 100).toFixed(1);
-                return `${label}: ${value} (${percentage}%)`;
+      // Gráfico Chart.js
+      // IMPORTANTE: La variable PHP '$estadisticas' está comentada en tu código PHP.
+      // Si deseas que el gráfico funcione, debes descomentar la sección PHP de '$estadisticas'
+      // para que esta variable esté definida antes de ser usada aquí.
+      // Si no necesitas el gráfico en esta vista, puedes eliminar esta parte del JavaScript.
+      
+
+      const ctx = document.getElementById('graficoEstados').getContext('2d');
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Creada', 'Enviada', 'En Preparacion', 'En Traslado', 'Entregada', 'Cancelada'],
+          datasets: [{
+            label: 'Órdenes por estado',
+            data: dataEstados,
+            backgroundColor: ['#a81d6a', '#1d6ea8', '#e6df1c', '#e6661c', '#5cb85c', '#db3630']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            title: {
+              display: true,
+              text: 'Distribución de órdenes por estado'
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const label = context.label || '';
+                  const value = context.raw;
+                  const percentage = (value / total * 100).toFixed(1);
+                  return `${label}: ${value} (${percentage}%)`;
+                }
               }
             }
           }
         }
-      }
-    });
-
-    let currentCancelForm = null;
-
-    function showCancelModal(form) {
-      currentCancelForm = form;
-      const cancelReasonModal = new bootstrap.Modal(document.getElementById('cancelReasonModal'));
-      cancelReasonModal.show();
-      return false; // Prevenir el envío inmediato del formulario
-    }
-
-    document.getElementById('confirmCancelBtn').addEventListener('click', function () {
-      const description = document.getElementById('cancelReasonTextarea').value;
-      if (currentCancelForm && description) {
-        // Encontrar el input oculto con el ID específico para el orden_id del formulario actual
-        // Asegúrate de que este ID coincida con el 'id' del input oculto en el formulario del botón "Cancelar"
-        currentCancelForm.querySelector('#cancel_description_' + currentCancelForm.elements.orden_id.value).value = description;
-
-        // Ocultar modal y enviar formulario
-        const cancelModalInstance = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
-        if (cancelModalInstance) {
-          cancelModalInstance.hide();
-        }
-        currentCancelForm.submit();
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Por favor, ingresá el motivo de la cancelación.',
-          confirmButtonColor: '#3085d6'
-        });
-      }
-    });
-
-    // Restablecer el textarea cuando el modal se cierra
-    document.getElementById('cancelReasonModal').addEventListener('hidden.bs.modal', function () {
-      document.getElementById('cancelReasonTextarea').value = '';
+      });
     });
   </script>
 </body>

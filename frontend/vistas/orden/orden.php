@@ -256,7 +256,7 @@ foreach ($ordenes as $o) {
                     <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
                   </form>
                 <?php elseif ($o->getEstado_id() == 6): ?>
-                  <button type="button" class="btn btn-info btn-sm"
+                  <button type="button" class="btn btn-danger btn-sm"
                     onclick="viewCancelReason(<?= htmlspecialchars($o->getId()) ?>)">Ver Motivo</button>
                 <?php else: ?>
                   <span class="text-muted">-</span>
