@@ -174,9 +174,11 @@ foreach ($ordenes as $o) {
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <button type="submit" name="accionOrden" value="preparar" class="btn btn-success btn-sm">Preparar</button>
                   </form>
-                  <form method="POST" style="display:inline;">
+                  <form method="POST" style="display:inline;" onsubmit="return showCancelModal(this);">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
-                    <button type="submit" name="accionOrden" value="cancelar" class="btn btn-danger btn-sm">Cancelar</button>
+                    <input type="hidden" name="accionOrden" value="cancelar">
+                    <input type="hidden" name="descripcion" id="cancel_description_<?= htmlspecialchars($o->getId()) ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
                   </form>
                 <?php elseif ($o->getEstado_id() == 3): ?>
                   <form method="POST" style="display:inline;">
@@ -207,7 +209,7 @@ foreach ($ordenes as $o) {
       </tbody>
     </table></br>
   </div>
-
+  
   <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="filtroModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -263,6 +265,26 @@ foreach ($ordenes as $o) {
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cancelReasonModalLabel">Motivo de Cancelación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <textarea class="form-control" id="cancelReasonTextarea" rows="3"
+            placeholder="Ingresá el motivo de la cancelación"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" id="confirmCancelBtn">Confirmar Cancelación</button>
+        </div>
       </div>
     </div>
   </div>
@@ -450,6 +472,43 @@ foreach ($ordenes as $o) {
           }
         }
       }
+    });
+
+    let currentCancelForm = null;
+
+    function showCancelModal(form) {
+      currentCancelForm = form;
+      const cancelReasonModal = new bootstrap.Modal(document.getElementById('cancelReasonModal'));
+      cancelReasonModal.show();
+      return false; // Prevenir el envío inmediato del formulario
+    }
+
+    document.getElementById('confirmCancelBtn').addEventListener('click', function () {
+      const description = document.getElementById('cancelReasonTextarea').value;
+      if (currentCancelForm && description) {
+        // Encontrar el input oculto con el ID específico para el orden_id del formulario actual
+        // Asegúrate de que este ID coincida con el 'id' del input oculto en el formulario del botón "Cancelar"
+        currentCancelForm.querySelector('#cancel_description_' + currentCancelForm.elements.orden_id.value).value = description;
+
+        // Ocultar modal y enviar formulario
+        const cancelModalInstance = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
+        if (cancelModalInstance) {
+          cancelModalInstance.hide();
+        }
+        currentCancelForm.submit();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Por favor, ingresá el motivo de la cancelación.',
+          confirmButtonColor: '#3085d6'
+        });
+      }
+    });
+
+    // Restablecer el textarea cuando el modal se cierra
+    document.getElementById('cancelReasonModal').addEventListener('hidden.bs.modal', function () {
+      document.getElementById('cancelReasonTextarea').value = '';
     });
   </script>
 </body>

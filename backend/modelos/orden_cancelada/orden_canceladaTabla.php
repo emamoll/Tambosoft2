@@ -18,7 +18,7 @@ class Orden_canceladaCrearTabla
     $conn = $this->db->connect();
     $sql = "CREATE TABLE IF NOT EXISTS ordenes_canceladas (
               id INT PRIMARY KEY AUTO_INCREMENT,
-              orden_id INT NOT NULL UNIQUE,
+              orden_id INT NOT NULL,
               descripcion VARCHAR(255) NOT NULL,
               fecha DATE NOT NULL,
               hora TIME NOT NULL,

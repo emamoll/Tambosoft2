@@ -349,12 +349,24 @@ class OrdenController
         $descripcion_cancelacion = $_POST['descripcion'] ?? 'Sin descripción.';
 
         if ($this->ordenDAO->modificarOrden($ordenCancelada)) {
-          // Registrar los detalles de la cancelación en la nueva tabla
-          $cancelacion = new Orden_cancelada(null, $id, $descripcion_cancelacion, $fechaNueva, $horaNueva);
-          if ($this->orden_canceladaDAO->registrarOrden_cancelada($cancelacion)) {
-            return ['tipo' => 'success', 'mensaje' => 'Orden cancelada y registro de cancelación creado correctamente.'];
+          // Lógica para devolver la cantidad al stock
+          $almacen_id_cancelada = $ordenActual->getAlmacen_id();
+          $alimento_id_cancelado = $ordenActual->getAlimento_id();
+          $cantidad_cancelada = $ordenActual->getCantidad();
+
+          // Llama al método para aumentar el stock
+          // Si tu método es actualizarStock_almacen y puede sumar, úsalo.
+          // De lo contrario, necesitarías un método como 'aumentarStock' o 'devolverStock'.
+          if ($this->stock_almacenController->actualizarStock_almacen($almacen_id_cancelada, $alimento_id_cancelado, $cantidad_cancelada)) {
+            // Registrar los detalles de la cancelación en la nueva tabla
+            $cancelacion = new Orden_cancelada(null, $id, $descripcion_cancelacion, $fechaNueva, $horaNueva);
+            if ($this->orden_canceladaDAO->registrarOrden_cancelada($cancelacion)) {
+              return ['tipo' => 'success', 'mensaje' => 'Orden cancelada y stock devuelto correctamente.'];
+            } else {
+              return ['tipo' => 'error', 'mensaje' => 'Orden cancelada y stock devuelto, pero hubo un error al registrar la descripción de la cancelación.'];
+            }
           } else {
-            return ['tipo' => 'error', 'mensaje' => 'Orden cancelada, pero hubo un error al registrar la descripción de la cancelación.'];
+            return ['tipo' => 'error', 'mensaje' => 'Orden cancelada, pero hubo un error al devolver el stock.'];
           }
         } else {
           return ['tipo' => 'error', 'mensaje' => 'Error al cancelar la orden'];
