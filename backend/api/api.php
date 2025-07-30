@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? '';
 $controller = new Stock_almacenController();
-$ordenCOntroller = new OrdenController();
+$ordenController = new OrdenController();
 
 switch ($action) {
   case 'getAlimentosByAlmacen':
@@ -30,7 +30,7 @@ switch ($action) {
     }
     break;
 
-  case 'getCancelacionDetail': // Nuevo caso para el detalle de cancelación
+  case 'getCancelacionDetail': // ¡Este bloque es el que falta en tu api.php actual!
     $ordenId = $_GET['ordenId'] ?? null;
     if ($ordenId) {
       $cancelacion = $ordenController->obtenerDetalleCancelacion((int) $ordenId);
