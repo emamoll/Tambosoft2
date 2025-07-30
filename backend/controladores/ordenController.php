@@ -5,7 +5,10 @@ require_once __DIR__ . '../../DAOS/estadoDAO.php';
 require_once __DIR__ . '../../DAOS/alimentoDAO.php';
 require_once __DIR__ . '../../DAOS/almacenDAO.php';
 require_once __DIR__ . '../../DAOS/stock_almacenDAO.php';
+require_once __DIR__ . '../../modelos/orden_cancelada/orden_canceladaModelo.php';
+require_once __DIR__ . '../../DAOS/orden_canceladaDAO.php';
 require_once __DIR__ . '../../controladores/stock_almacenController.php';
+
 
 class OrdenController
 {
@@ -14,6 +17,7 @@ class OrdenController
   private $alimentoDAO;
   private $almacenDAO;
   private $estadoDAO;
+  private $orden_canceladaDAO;
 
   public function __construct()
   {
@@ -22,6 +26,7 @@ class OrdenController
     $this->alimentoDAO = new AlimentoDAO();
     $this->almacenDAO = new AlmacenDAO();
     $this->estadoDAO = new EstadoDAO();
+    $this->orden_canceladaDAO = new Orden_canceladaDAO();
   }
 
 
@@ -341,8 +346,16 @@ class OrdenController
           $estadoNuevo_id
         );
 
+        $descripcion_cancelacion = $_POST['descripcion'] ?? 'Sin descripción.';
+
         if ($this->ordenDAO->modificarOrden($ordenCancelada)) {
-          return ['tipo' => 'success', 'mensaje' => 'Orden cancelada correctamente'];
+          // Registrar los detalles de la cancelación en la nueva tabla
+          $cancelacion = new Orden_cancelada(null, $id, $descripcion_cancelacion, $fechaNueva, $horaNueva);
+          if ($this->orden_canceladaDAO->registrarOrden_cancelada($cancelacion)) {
+            return ['tipo' => 'success', 'mensaje' => 'Orden cancelada y registro de cancelación creado correctamente.'];
+          } else {
+            return ['tipo' => 'error', 'mensaje' => 'Orden cancelada, pero hubo un error al registrar la descripción de la cancelación.'];
+          }
         } else {
           return ['tipo' => 'error', 'mensaje' => 'Error al cancelar la orden'];
         }
@@ -440,5 +453,10 @@ class OrdenController
       $orden->estado_nombre = $estado ? $estado->getNombre() : 'Sin estado';
     }
     return $ordenes;
+  }
+
+  public function obtenerDetalleCancelacion($orden_id)
+  {
+    return $this->orden_canceladaDAO->getOrden_canceladaByOrdenId($orden_id);
   }
 }

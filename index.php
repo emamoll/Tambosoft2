@@ -11,6 +11,7 @@ require_once __DIR__ . '../backend/controladores/ordenController.php';
 require_once __DIR__ . '../backend/controladores/pasturaController.php';
 require_once __DIR__ . '../backend/controladores/potreroController.php';
 require_once __DIR__ . '../backend/controladores/stock_almacenController.php';
+require_once __DIR__ . '../backend/modelos//orden_cancelada/orden_canceladaTabla.php';
 
 try {
   new UsuarioController();
@@ -23,6 +24,10 @@ try {
   new PasturaController();
   new PotreroController();
   new Stock_almacenController();
+
+  $db = DatabaseFactory::createDatabaseConnection('mysql');
+  $orden_canceladaCrearTabla = new Orden_canceladaCrearTabla($db);
+  $orden_canceladaCrearTabla->crearTablaOrdenes_canceladas();
   // No es necesario guardar las instancias en variables si solo es para ejecutar el constructor.
 } catch (Exception $e) {
   error_log("Error al crear tablas: " . $e->getMessage());
