@@ -1,7 +1,12 @@
 <?php
 
+/**
+ * Clase de modelo para la entidad 'Usuario'.
+ * Representa la estructura de los datos de un usuario en el sistema.
+ */
 class Usuario
 {
+  // Propiedades privadas que corresponden a las columnas de la tabla `usuarios`.
   private $id;
   private $username;
   private $email;
@@ -9,6 +14,16 @@ class Usuario
   private $rol_id;
   private $token;
 
+  /**
+   * Constructor de la clase.
+   *
+   * @param int|null $id El ID del usuario.
+   * @param string|null $username El nombre de usuario.
+   * @param string|null $email La dirección de correo electrónico.
+   * @param string|null $password La contraseña cifrada del usuario.
+   * @param int|null $rol_id El ID del rol asociado.
+   * @param string|null $token El token de sesión del usuario.
+   */
   public function __construct($id = null, $username = null, $email = null, $password = null, $rol_id = null, $token = null)
   {
     $this->id = $id;
@@ -18,6 +33,8 @@ class Usuario
     $this->rol_id = $rol_id;
     $this->token = $token;
   }
+
+  // Métodos "getter" para acceder a las propiedades.
 
   public function getId()
   {
@@ -48,6 +65,8 @@ class Usuario
   {
     return $this->token;
   }
+
+  // Métodos "setter" para modificar las propiedades.
 
   public function setUsername($username)
   {

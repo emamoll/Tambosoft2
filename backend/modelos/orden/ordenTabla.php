@@ -1,17 +1,31 @@
 <?php
 
+// Incluye los archivos necesarios para la fábrica de bases de datos y la interfaz de conexión.
 require_once __DIR__ . '../../../servicios/databaseFactory.php';
 require_once __DIR__ . '../../../servicios/databaseConnectionInterface.php';
 
+/**
+ * Clase encargada de crear las tablas `estados` y `ordenes` en la base de datos,
+ * así como de insertar los valores iniciales para la tabla `estados`.
+ */
 class OrdenCrearTabla
 {
+  // Propiedad para la instancia de conexión a la base de datos.
   private $db;
 
+  /**
+   * Constructor de la clase.
+   *
+   * @param object $db La instancia de la conexión a la base de datos.
+   */
   public function __construct($db)
   {
     $this->db = $db;
   }
 
+  /**
+   * Crea la tabla `estados` si no existe.
+   */
   public function crearTablaEstados()
   {
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');
@@ -19,11 +33,15 @@ class OrdenCrearTabla
     $sql = "CREATE TABLE IF NOT EXISTS estados (
               id INT PRIMARY KEY AUTO_INCREMENT, 
               nombre VARCHAR(255) NOT NULL UNIQUE)";
-
     $conn->query($sql);
     $conn->close();
   }
 
+  /**
+   * Inserta los valores predeterminados en la tabla `estados` si no existen.
+   *
+   * Usa `INSERT IGNORE` para evitar errores si los valores ya están presentes.
+   */
   public function insertarValoresTablaEstados()
   {
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');
@@ -34,6 +52,16 @@ class OrdenCrearTabla
     $conn->close();
   }
 
+  /**
+   * Crea la tabla `ordenes` si no existe.
+   *
+   * La tabla tiene las siguientes columnas:
+   * - `id`: Entero, clave primaria, auto-incremental.
+   * - `almacen_id`, `alimento_id`, `estado_id`: Enteros, claves foráneas a sus respectivas tablas.
+   * - `cantidad`: Entero, no nulo.
+   * - `fecha_creacion`, `fecha_actualizacion`: Fechas, no nulas.
+   * - `hora_creacion`, `hora_actualizacion`: Tiempos, no nulos.
+   */
   public function crearTablaOrden()
   {
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');

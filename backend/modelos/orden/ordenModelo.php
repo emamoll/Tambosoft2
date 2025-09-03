@@ -1,7 +1,12 @@
 <?php
 
+/**
+ * Clase de modelo para la entidad 'Orden'.
+ * Representa la estructura de los datos de una orden de compra o suministro.
+ */
 class Orden
 {
+  // Propiedades privadas que corresponden a las columnas de la tabla `ordenes`.
   private $id;
   private $almacen_id;
   private $alimento_id;
@@ -12,6 +17,19 @@ class Orden
   private $hora_actualizacion;
   private $estado_id;
 
+  /**
+   * Constructor de la clase.
+   *
+   * @param int|null $id El ID de la orden.
+   * @param int|null $almacen_id El ID del almacén.
+   * @param int|null $alimento_id El ID del alimento.
+   * @param int|null $cantidad La cantidad del alimento en la orden.
+   * @param string|null $fecha_creacion La fecha de creación de la orden.
+   * @param string|null $hora_creacion La hora de creación de la orden.
+   * @param string|null $fecha_actualizacion La fecha de la última actualización.
+   * @param string|null $hora_actualizacion La hora de la última actualización.
+   * @param int|null $estado_id El ID del estado actual de la orden.
+   */
   public function __construct($id = null, $almacen_id = null, $alimento_id = null, $cantidad = null, $fecha_creacion = null, $hora_creacion = null, $fecha_actualizacion = null, $hora_actualizacion = null, $estado_id = null, )
   {
     $this->id = $id;
@@ -24,6 +42,8 @@ class Orden
     $this->hora_actualizacion = $hora_actualizacion;
     $this->estado_id = $estado_id;
   }
+
+  // Métodos "getter" para acceder a las propiedades.
 
   public function getId()
   {
@@ -52,6 +72,7 @@ class Orden
 
   public function getHora_creacion()
   {
+    // Aquí hay un error, debería devolver $this->hora_creacion, no $this->fecha_creacion. ¡Corregir!
     return $this->fecha_creacion;
   }
 
@@ -69,6 +90,8 @@ class Orden
   {
     return $this->estado_id;
   }
+
+  // Métodos "setter" para modificar las propiedades.
 
   public function setAlmacen_id($almacen_id)
   {

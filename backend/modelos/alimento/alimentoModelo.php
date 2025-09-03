@@ -1,7 +1,12 @@
 <?php
 
+/**
+ * Clase de modelo para la entidad 'Alimento'.
+ * Representa la estructura de los datos de un alimento.
+ */
 class Alimento
 {
+  // Propiedades privadas que corresponden a las columnas de la tabla `alimentos`.
   private $id;
   private $nombre;
   private $precio;
@@ -9,6 +14,16 @@ class Alimento
   private $peso;
   private $fecha_vencimiento;
 
+  /**
+   * Constructor de la clase.
+   *
+   * @param int|null $id El ID del alimento.
+   * @param string|null $nombre El nombre del alimento.
+   * @param float|null $precio El precio del alimento.
+   * @param string|null $descripcion La descripción del alimento.
+   * @param float|null $peso El peso del alimento.
+   * @param string|null $fecha_vencimiento La fecha de vencimiento.
+   */
   public function __construct($id = null, $nombre = null, $precio = null, $descripcion = null, $peso = null, $fecha_vencimiento = null)
   {
     $this->id = $id;
@@ -18,6 +33,8 @@ class Alimento
     $this->peso = $peso;
     $this->fecha_vencimiento = $fecha_vencimiento;
   }
+
+  // Métodos "getter" para acceder a las propiedades.
 
   public function getId()
   {
@@ -48,6 +65,8 @@ class Alimento
   {
     return $this->fecha_vencimiento;
   }
+
+  // Métodos "setter" para modificar las propiedades.
 
   public function setNombre($nombre)
   {

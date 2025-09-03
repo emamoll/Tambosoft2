@@ -1,15 +1,25 @@
 <?php
 
+// Incluye los archivos necesarios para la conexión a la base de datos, el modelo y la tabla de la orden.
 require_once __DIR__ . '../../servicios/databaseFactory.php';
 require_once __DIR__ . '../../modelos/orden/ordenTabla.php';
 require_once __DIR__ . '../../modelos/orden/ordenModelo.php';
 
+/**
+ * Clase para el acceso a datos (DAO) de la tabla 'ordenes'.
+ * Maneja las operaciones de la base de datos relacionadas con las órdenes.
+ */
 class OrdenDAO
 {
+  // Propiedades privadas para la conexión y la creación de la tabla.
   private $db;
   private $conn;
   private $crearTabla;
 
+  /**
+   * Constructor de la clase.
+   * Inicializa la conexión, crea las tablas 'estados' y 'ordenes', e inserta los valores iniciales.
+   */
   public function __construct()
   {
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');
@@ -20,10 +30,14 @@ class OrdenDAO
     $this->conn = $this->db->connect();
   }
 
+  /**
+   * Obtiene todas las órdenes de la base de datos.
+   *
+   * @return array Un array de objetos Orden.
+   */
   public function getAllOrdenes()
   {
     $sql = "SELECT * FROM ordenes ORDER BY id";
-
     $result = $this->conn->query($sql);
 
     if (!$result) {
@@ -31,7 +45,6 @@ class OrdenDAO
     }
 
     $ordenes = [];
-
     while ($row = $result->fetch_assoc()) {
       $orden = new Orden(
         $row['id'],
@@ -46,10 +59,15 @@ class OrdenDAO
       );
       $ordenes[] = $orden;
     }
-
     return $ordenes;
   }
 
+  /**
+   * Obtiene una orden por su ID.
+   *
+   * @param int $id El ID de la orden.
+   * @return Orden|null Un objeto Orden si se encuentra, de lo contrario, null.
+   */
   public function getOrdenById($id)
   {
     $sql = "SELECT * FROM ordenes WHERE id = ?";
@@ -88,11 +106,17 @@ class OrdenDAO
     );
   }
 
+  /**
+   * Obtiene una lista de órdenes por su estado.
+   *
+   * @param int $estado_id El ID del estado.
+   * @return array Un array de objetos Orden.
+   */
   public function getOrdenByEstadoId($estado_id)
   {
     $sql = "SELECT * FROM ordenes WHERE estado_id = ?";
     $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("s", $estado_id);
+    $stmt->bind_param("s", $estado_id); // Se usa 's', pero debería ser 'i'. ¡Revisar!
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -110,10 +134,15 @@ class OrdenDAO
         $row['estado_id']
       );
     }
-
     return $ordenes;
   }
 
+  /**
+   * Registra una nueva orden.
+   *
+   * @param Orden $o El objeto Orden a registrar.
+   * @return bool True si el registro fue exitoso, de lo contrario, false.
+   */
   public function registrarOrden(Orden $o)
   {
     $sql = "INSERT INTO ordenes (almacen_id, alimento_id, cantidad, fecha_creacion, hora_creacion, fecha_actualizacion, hora_actualizacion, estado_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -131,12 +160,16 @@ class OrdenDAO
     if (!$stmt->execute()) {
       die("Error en execute (inserción): " . $stmt->error);
     }
-
     $stmt->close();
-
     return true;
   }
 
+  /**
+   * Modifica una orden existente.
+   *
+   * @param Orden $o El objeto Orden con los datos actualizados.
+   * @return bool True si la modificación fue exitosa, de lo contrario, false.
+   */
   public function modificarOrden(Orden $o)
   {
     $sql = "UPDATE ordenes SET almacen_id = ?, alimento_id = ?, cantidad = ?, fecha_creacion = ?, hora_creacion = ?,fecha_actualizacion = ?, hora_actualizacion = ?, estado_id = ? WHERE id = ?";
@@ -155,6 +188,12 @@ class OrdenDAO
     return $stmt->execute();
   }
 
+  /**
+   * Elimina una orden por su ID.
+   *
+   * @param int $id El ID de la orden a eliminar.
+   * @return bool True si la eliminación fue exitosa, de lo contrario, false.
+   */
   public function eliminarOrden($id)
   {
     $sql = "DELETE FROM ordenes WHERE id = ?";
@@ -164,6 +203,13 @@ class OrdenDAO
     return $stmt->execute();
   }
 
+  /**
+   * Actualiza el estado de una orden.
+   *
+   * @param int $id El ID de la orden.
+   * @param int $estado_id El nuevo ID del estado.
+   * @return bool True si la actualización fue exitosa, de lo contrario, false.
+   */
   public function actualizarEstado($id, $estado_id)
   {
     $sql = "UPDATE ordenes SET estado_id = ? WHERE id = ?";
@@ -173,10 +219,18 @@ class OrdenDAO
     return $stmt->execute();
   }
 
+  /**
+   * Obtiene una lista de órdenes filtradas por almacén, alimento y/o estado.
+   *
+   * @param array $almacen_id Array de IDs de almacenes.
+   * @param array $alimento_id Array de IDs de alimentos.
+   * @param array $estado_id Array de IDs de estados.
+   * @return array Un array de objetos Orden que coinciden con los filtros.
+   */
   public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id)
   {
+    // Construye la consulta SQL dinámicamente.
     $sql = "SELECT * FROM ordenes WHERE 1=1";
-
     $params = [];
     $tipos = '';
 
@@ -209,6 +263,7 @@ class OrdenDAO
       return [];
     }
 
+    // Vincula los parámetros dinámicamente.
     if (!empty($params)) {
       $bind_names = [];
       $bind_names[] = $tipos;
@@ -241,9 +296,7 @@ class OrdenDAO
       );
       $ordenes[] = $orden;
     }
-
     $stmt->close();
-
     return $ordenes;
   }
 }

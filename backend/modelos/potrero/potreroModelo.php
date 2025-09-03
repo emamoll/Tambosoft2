@@ -1,7 +1,12 @@
 <?php
 
+/**
+ * Clase de modelo para la entidad 'Potrero'.
+ * Representa la estructura de los datos de un potrero.
+ */
 class Potrero
 {
+  // Propiedades privadas que corresponden a las columnas de la tabla `potreros`.
   private $id;
   private $nombre;
   private $superficie;
@@ -9,6 +14,16 @@ class Potrero
   private $categoria_id;
   private $campo_id;
 
+  /**
+   * Constructor de la clase.
+   *
+   * @param int|null $id El ID del potrero.
+   * @param string|null $nombre El nombre del potrero.
+   * @param string|null $superficie La superficie del potrero.
+   * @param int|null $pastura_id El ID de la pastura asociada.
+   * @param int|null $categoria_id El ID de la categoría asociada.
+   * @param int|null $campo_id El ID del campo al que pertenece el potrero.
+   */
   public function __construct($id = null, $nombre = null, $superficie = null, $pastura_id = null, $categoria_id = null, $campo_id = null)
   {
     $this->id = $id;
@@ -18,6 +33,8 @@ class Potrero
     $this->categoria_id = $categoria_id;
     $this->campo_id = $campo_id;
   }
+
+  // Métodos "getter" para acceder a las propiedades.
 
   public function getId()
   {
@@ -49,6 +66,8 @@ class Potrero
     return $this->campo_id;
   }
 
+  // Métodos "setter" para modificar las propiedades.
+
   public function setNombre($nombre)
   {
     $this->nombre = $nombre;
@@ -61,7 +80,7 @@ class Potrero
 
   public function setPastura_id($pastura_id)
   {
-    $this->pastura = $pastura_id;
+    $this->pastura_id = $pastura_id;
   }
 
   public function setCategoria_id($categoria_id)
