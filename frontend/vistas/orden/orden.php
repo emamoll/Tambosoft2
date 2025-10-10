@@ -4,6 +4,7 @@ require_once __DIR__ . '../../../../backend/controladores/estadoController.php';
 require_once __DIR__ . '../../../../backend/controladores/almacenController.php';
 require_once __DIR__ . '../../../../backend/controladores/alimentoController.php';
 require_once __DIR__ . '../../../../backend/controladores/ordenController.php';
+require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
 require_once __DIR__ . '../../../../backend/servicios/libs/fpdf.php';
 require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
 
@@ -26,6 +27,9 @@ $almacenes = $controllerAlmacen->obtenerAlmacenes();
 
 $controllerAlimento = new AlimentoController();
 $alimentos = $controllerAlimento->obtenerAlimentos();
+
+$controllerCategoria = new CategoriaController();
+$categorias = $controllerCategoria->obtenerCategorias();
 
 $controllerCategoria = new CategoriaController();
 $categorias = $controllerCategoria->obtenerCategorias();
@@ -54,6 +58,7 @@ $ordenes = $controllerOrden->procesarFiltro();
 $filtrosAplicados = [
   'estado_id' => $_GET['estado_id'] ?? [],
   'almacen_id' => $_GET['almacen_id'] ?? [],
+  'categoria_id' => $_GET['categoria_id'] ?? [],
   'alimento_id' => $_GET['alimento_id'] ?? []
 ];
 
@@ -120,6 +125,8 @@ foreach ($ordenes as $o) {
             <?php if ($ordenAModificar): ?>
               <input type="hidden" id="orden_modificar_almacen_id"
                 value="<?= htmlspecialchars($ordenAModificar->getAlmacen_id()) ?>">
+              <input type="hidden" id="orden_modificar_categoria_id"
+                value="<?= htmlspecialchars($ordenAModificar->getCategoria_id()) ?>">
               <input type="hidden" id="orden_modificar_alimento_id"
                 value="<?= htmlspecialchars($ordenAModificar->getAlimento_id()) ?>">
               <input type="hidden" id="orden_modificar_cantidad"
@@ -137,9 +144,23 @@ foreach ($ordenes as $o) {
               </select>
             </div>
             <div class="form-group select-group">
+              <select name="categoria_id" id="categoria_nombre_select">
+                <option value="" disabled selected>Seleccione una categoría</option>
+                <?php foreach ($categorias as $ca): ?>
+                  <option value="<?= htmlspecialchars($ca->getId()) ?>" <?= (isset($_POST['categoria_id']) && $_POST['categoria_id'] == $ca->getId()) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($ca->getNombre()) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-group select-group">
               <select name="alimento_id" id="alimento_nombre_select">
                 <option value="" disabled selected>Seleccione un alimento</option>
               </select>
+            </div>
+            <div class="form-group" id="stock_disponible_container"
+              style="display: none; margin-top: 5px; font-size: 0.85em;">
+              Stock disponible: <span id="stock_disponible" style="font-weight: bold; color: #333;"></span>
             </div>
             <div class="form-group" id="stock_disponible_container"
               style="display: none; margin-top: 5px; font-size: 0.85em;">
@@ -181,6 +202,7 @@ foreach ($ordenes as $o) {
           <th>Orden N</th>
           <th>Campo</th>
           <th>Alimento</th>
+          <th>Categoría</th>
           <th>Cantidad</th>
           <th>Fecha</th>
           <th>Hora</th>
@@ -200,6 +222,9 @@ foreach ($ordenes as $o) {
               </td>
               <td>
                 <?= htmlspecialchars($o->alimento_nombre ?? '') ?>
+              </td>
+              <td>
+                <?= htmlspecialchars($o->categoria_nombre ?? '') ?>
               </td>
               <td>
                 <?= htmlspecialchars($o->getCantidad()) ?>
@@ -266,7 +291,7 @@ foreach ($ordenes as $o) {
           <?php endforeach; ?>
         <?php else: ?>
           <tr>
-            <td colspan="8">No hay ordenes cargadas.</td>
+            <td colspan="10">No hay ordenes cargadas.</td>
           </tr>
         <?php endif; ?>
       </tbody>
@@ -299,14 +324,14 @@ foreach ($ordenes as $o) {
           <h5 class="modal-title" id="filtroModalLabel">Filtrar Órdenes</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <form id="filtroForm" method="POST">
+        <form id="filtroForm" method="GET">
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label">Estado</label><br>
               <?php foreach ($estados as $e): ?>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="estado_id[]" value="<?= $e->getId() ?>"
-                    id="estado_<?= $e->getId() ?>" <?= (isset($_POST['estado_id']) && in_array($e->getId(), $_POST['estado_id'])) ? 'checked' : '' ?>>
+                    id="estado_<?= $e->getId() ?>" <?= (isset($_GET['estado_id']) && in_array($e->getId(), $_GET['estado_id'])) ? 'checked' : '' ?>>
                   <label class="form-check-label" for="estado_<?= $e->getId() ?>">
                     <?= htmlspecialchars($e->getNombre()) ?>
                   </label>
@@ -318,9 +343,21 @@ foreach ($ordenes as $o) {
               <?php foreach ($almacenes as $al): ?>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="almacen_id[]" value="<?= $al->getId() ?>"
-                    id="almacen_<?= $al->getId() ?>" <?= (isset($_POST['almacen_id']) && in_array($al->getId(), $_POST['almacen_id'])) ? 'checked' : '' ?>>
+                    id="almacen_<?= $al->getId() ?>" <?= (isset($_GET['almacen_id']) && in_array($al->getId(), $_GET['almacen_id'])) ? 'checked' : '' ?>>
                   <label class="form-check-label" for="almacen_<?= $al->getId() ?>">
                     <?= htmlspecialchars($al->getNombre()) ?>
+                  </label>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Categorias</label><br>
+              <?php foreach ($categorias as $po): ?>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="categoria_id[]" value="<?= $po->getId() ?>"
+                    id="categoria_<?= $po->getId() ?>" <?= (isset($_GET['categoria_id']) && in_array($po->getId(), $_GET['categoria_id'])) ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="categoria_<?= $po->getId() ?>">
+                    <?= htmlspecialchars($po->getNombre()) ?>
                   </label>
                 </div>
               <?php endforeach; ?>
@@ -330,7 +367,7 @@ foreach ($ordenes as $o) {
               <?php foreach ($alimentos as $a): ?>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="alimento_id[]" value="<?= $a->getId() ?>"
-                    id="alimento_<?= $a->getId() ?>" <?= (isset($_POST['alimento_id']) && in_array($a->getId(), $_POST['alimento_id'])) ? 'checked' : '' ?>>
+                    id="alimento_<?= $a->getId() ?>" <?= (isset($_GET['alimento_id']) && in_array($a->getId(), $_GET['alimento_id'])) ? 'checked' : '' ?>>
                   <label class="form-check-label" for="alimento_<?= $a->getId() ?>">
                     <?= htmlspecialchars($a->getNombre()) ?>
                   </label>
@@ -392,6 +429,7 @@ foreach ($ordenes as $o) {
     document.addEventListener('DOMContentLoaded', function () {
       const almacenSelect = document.getElementById('almacen_nombre_select');
       const alimentoSelect = document.getElementById('alimento_nombre_select');
+      const categoriaSelect = document.getElementById('categoria_nombre_select');
       const stockDisplay = document.getElementById('stock_disponible');
       const stockContainer = document.getElementById('stock_disponible_container');
       const cantidadInput = document.getElementById('cantidad');
@@ -399,6 +437,7 @@ foreach ($ordenes as $o) {
       const filtroForm = document.getElementById('filtroForm');
       const ordenModificarAlmacenIdInput = document.getElementById('orden_modificar_almacen_id');
       const ordenModificarAlimentoIdInput = document.getElementById('orden_modificar_alimento_id');
+      const ordenModificarCategoriaIdInput = document.getElementById('orden_modificar_categoria_id');
       const ordenModificarCantidadInput = document.getElementById('orden_modificar_cantidad');
 
       stockContainer.style.display = 'none';
@@ -452,6 +491,12 @@ foreach ($ordenes as $o) {
         stockContainer.style.display = 'none';
       });
 
+      categoriaSelect.addEventListener('change', function () {
+        const categoriaId = this.value;
+        stockDisplay.textContent = '';
+        stockContainer.style.display = 'none';
+      });
+
       alimentoSelect.addEventListener('change', function () {
         const almacenId = almacenSelect.value;
         const alimentoId = this.value;
@@ -496,12 +541,14 @@ foreach ($ordenes as $o) {
       });
 
       // Prepopular campos si estamos en modo modificar
-      if (ordenModificarAlmacenIdInput && ordenModificarAlimentoIdInput && ordenModificarCantidadInput) {
+      if (ordenModificarAlmacenIdInput && ordenModificarAlimentoIdInput && ordenModificarCantidadInput && ordenModificarCategoriaInput) {
         const initialAlmacenId = ordenModificarAlmacenIdInput.value;
         const initialAlimentoId = ordenModificarAlimentoIdInput.value;
+        const initialCategoriaId = ordenModificarCategoriaIdInput.value;
         const initialCantidad = ordenModificarCantidadInput.value;
 
         almacenSelect.value = initialAlmacenId;
+        categoriaSelect.value = initialCategoriaId
         cantidadInput.value = initialCantidad;
 
         fetchAndPopulateAlimentos(initialAlmacenId, initialAlimentoId);
@@ -543,7 +590,7 @@ foreach ($ordenes as $o) {
     new Chart(ctx, {
       type: 'pie',
       data: {
-        labels: ['Creada', 'Enviada', 'En Preparacion', 'En Traslado', 'Entregada', 'Cancelada'],
+        labels: ['Creada', 'Enviada', 'En preparacion para envio', 'Trasladando a campo', 'Entregada en campo', 'Cancelada'],
         datasets: [{
           label: 'Órdenes por estado',
           data: dataEstados,

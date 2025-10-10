@@ -121,6 +121,24 @@ class PotreroDAO
     return new Potrero($id, $nombre, $superficie, $pastura_id, $categoria_id, $campo_id);
   }
 
+    public function getPotreroByCampo($campo_id)
+  {
+    $sql = "SELECT * FROM potreros WHERE campo_id = ?"; 
+    $stmt = $this->conn->prepare($sql);
+    $stmt->bind_param("i", $campo_id);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows() === 0) {
+      return null;
+    }
+
+    $stmt->bind_result($id, $nombre, $superficie, $pastura_id, $categoria_id,  $campo_id);
+    $stmt->fetch();
+
+    return new Potrero($id, $nombre, $superficie, $pastura_id, $categoria_id, $campo_id);
+  }
+
   /**
    * Registra un nuevo potrero.
    *

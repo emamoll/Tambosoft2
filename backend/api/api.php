@@ -2,6 +2,7 @@
 // Incluye los controladores necesarios para la API.
 require_once __DIR__ . '/../controladores/stock_almacenController.php';
 require_once __DIR__ . '../../controladores/ordenController.php';
+require_once __DIR__ . '../../controladores/potreroController.php';
 
 // Establece el encabezado para que la respuesta sea de tipo JSON.
 header('Content-Type: application/json');
@@ -13,6 +14,7 @@ $action = $_GET['action'] ?? '';
 // Instancia los controladores que se usarán para manejar las solicitudes.
 $controller = new Stock_almacenController();
 $ordenController = new OrdenController();
+$potreroController = new PotreroController();
 
 // Un "switch" para manejar las diferentes acciones de la API.
 // Evalúa la variable $action para determinar qué bloque de código ejecutar.
@@ -25,6 +27,19 @@ switch ($action) {
       // Llama al método del controlador para obtener los alimentos y los codifica en formato JSON.
       $alimentos = $controller->getAlimentosByAlmacenId((int) $almacenId);
       echo json_encode($alimentos);
+    } else {
+      // Si falta el ID del almacén, devuelve un error en formato JSON.
+      echo json_encode(['error' => 'Falta el ID del almacén']);
+    }
+    break;
+
+  case 'getPotrerosByAlmacen':
+    // Obtiene el ID del almacén desde la URL.
+    $almacenId = $_GET['almacenId'] ?? null;
+    if ($almacenId) {
+      // Llama al método del controlador para obtener los potreros y los codifica en formato JSON.
+      $potreros = $potreroController->getPotreroByCampoId((int) $almacenId);
+      echo json_encode($potreros);
     } else {
       // Si falta el ID del almacén, devuelve un error en formato JSON.
       echo json_encode(['error' => 'Falta el ID del almacén']);

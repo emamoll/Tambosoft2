@@ -11,6 +11,7 @@ class Orden
   private $almacen_id;
   private $alimento_id;
   private $cantidad;
+  private $categoria_id;
   private $fecha_creacion;
   private $hora_creacion;
   private $fecha_actualizacion;
@@ -30,12 +31,13 @@ class Orden
    * @param string|null $hora_actualizacion La hora de la última actualización.
    * @param int|null $estado_id El ID del estado actual de la orden.
    */
-  public function __construct($id = null, $almacen_id = null, $alimento_id = null, $cantidad = null, $fecha_creacion = null, $hora_creacion = null, $fecha_actualizacion = null, $hora_actualizacion = null, $estado_id = null, )
+  public function __construct($id = null, $almacen_id = null, $alimento_id = null, $cantidad = null, $categoria_id = null, $fecha_creacion = null, $hora_creacion = null, $fecha_actualizacion = null, $hora_actualizacion = null, $estado_id = null, )
   {
     $this->id = $id;
     $this->almacen_id = $almacen_id;
     $this->alimento_id = $alimento_id;
     $this->cantidad = $cantidad;
+    $this->categoria_id = $categoria_id;
     $this->hora_creacion = $hora_creacion;
     $this->fecha_creacion = $fecha_creacion;
     $this->fecha_actualizacion = $fecha_actualizacion;
@@ -65,6 +67,11 @@ class Orden
     return $this->cantidad;
   }
 
+  public function getCategoria_id()
+  {
+    return $this->categoria_id;
+  }
+
   public function getFecha_creacion()
   {
     return $this->fecha_creacion;
@@ -72,8 +79,7 @@ class Orden
 
   public function getHora_creacion()
   {
-    // Aquí hay un error, debería devolver $this->hora_creacion, no $this->fecha_creacion. ¡Corregir!
-    return $this->fecha_creacion;
+    return $this->hora_creacion;
   }
 
   public function getFecha_actualizacion()
@@ -106,6 +112,10 @@ class Orden
   public function setCantidad($cantidad)
   {
     $this->cantidad = $cantidad;
+  }
+
+  public function setCategoria_id($categoria_id){
+    $this->categoria_id = $categoria_id;
   }
 
   public function setFecha_creacion($fecha_creacion)

@@ -13,6 +13,7 @@ class Stock_Almacen
   private $stock;
   private $alimento_nombre;
   private $alimento_precio;
+  private $totalStock;
 
   /**
    * Constructor de la clase.
@@ -64,6 +65,11 @@ class Stock_Almacen
     return $this->alimento_precio;
   }
 
+  public function getTotalStock()
+  {
+    return $this->totalStock;
+  }
+
   // Métodos "setter" para modificar las propiedades.
 
   public function setAlmacen_id($almacen_id)
@@ -100,4 +106,40 @@ class Stock_Almacen
   {
     return $this->stock * $this->alimento_precio;
   }
+
+  public function getAlmacen_nombre()
+  {
+    return $this->almacen_nombre;
+  }
+
+  public function setAlmacen_nombre($almacen_nombre)
+  {
+    $this->almacen_nombre = $almacen_nombre;
+  }
+
+  public function getAlimento_nombre()
+  {
+    return $this->alimento_nombre;
+  }
+
+  public function setAlimento_nombre($alimento_nombre)
+  {
+    $this->alimento_nombre = $alimento_nombre;
+  }
+
+  public function getAlimento_precio()
+  {
+    return $this->alimento_precio;
+  }
+
+  public function setAlimento_precio($alimento_precio)
+  {
+    $this->alimento_precio = $alimento_precio;
+  }
+
+  public function setTotalStock($totalStock)
+  {
+    $this->totalStock = $totalStock;
+  }
 }
+

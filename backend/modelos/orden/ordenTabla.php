@@ -47,7 +47,7 @@ class OrdenCrearTabla
     $this->db = DatabaseFactory::createDatabaseConnection('mysql');
     $conn = $this->db->connect();
     $sql = "INSERT IGNORE INTO estados (nombre) 
-            VALUES ('creada'), ('enviada'), ('en preparacion'), ('en traslado'), ('entregada'), ('cancelada')";
+            VALUES ('creada'), ('enviada'), ('en preparacion para envio'), ('trasladando a campo'), ('entregada en campo'), ('cancelado')";
     $conn->query($sql);
     $conn->close();
   }
@@ -71,6 +71,7 @@ class OrdenCrearTabla
             almacen_id INT NOT NULL,
             alimento_id INT NOT NULL,
             cantidad INT NOT NULL,
+            categoria_id INT NOT NULL,
             fecha_creacion DATE NOT NULL,
             hora_creacion TIME NOT NULL,
             fecha_actualizacion DATE NOT NULL,
@@ -78,6 +79,7 @@ class OrdenCrearTabla
             estado_id INT NOT NULL,
             FOREIGN KEY (almacen_id) REFERENCES almacenes(id),
             FOREIGN KEY (alimento_id) REFERENCES alimentos(id),
+            FOREIGN KEY (categoria_id) REFERENCES categorias(id),
             FOREIGN KEY (estado_id) REFERENCES estados(id)            
             )";
     $conn->query($sql);

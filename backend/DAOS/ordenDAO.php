@@ -51,6 +51,7 @@ class OrdenDAO
         $row['almacen_id'],
         $row['alimento_id'],
         $row['cantidad'],
+        $row['categoria_id'],
         $row['fecha_creacion'],
         $row['hora_creacion'],
         $row['fecha_actualizacion'],
@@ -85,6 +86,7 @@ class OrdenDAO
       $almacen_id,
       $alimento_id,
       $cantidad,
+      $categoria_id,
       $fecha_creacion,
       $hora_creacion,
       $fecha_actualizacion,
@@ -98,6 +100,7 @@ class OrdenDAO
       $almacen_id,
       $alimento_id,
       $cantidad,
+      $categoria_id,
       $fecha_creacion,
       $hora_creacion,
       $fecha_actualizacion,
@@ -127,6 +130,33 @@ class OrdenDAO
         $row['almacen_id'],
         $row['alimento_id'],
         $row['cantidad'],
+        $row['categoria_id'],
+        $row['fecha_creacion'],
+        $row['hora_creacion'],
+        $row['fecha_actualizacion'],
+        $row['hora_actualizacion'],
+        $row['estado_id']
+      );
+    }
+    return $ordenes;
+  }
+
+    public function getOrdenByCategoriaId($categoria_id)
+  {
+    $sql = "SELECT * FROM ordenes WHERE categoria_id = ?";
+    $stmt = $this->conn->prepare($sql);
+    $stmt->bind_param("s", $categoria_id); // Se usa 's', pero debería ser 'i'. ¡Revisar!
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $ordenes = [];
+    while ($row = $result->fetch_assoc()) {
+      $ordenes[] = new Orden(
+        $row['id'],
+        $row['almacen_id'],
+        $row['alimento_id'],
+        $row['cantidad'],
+        $row['categoria_id'],
         $row['fecha_creacion'],
         $row['hora_creacion'],
         $row['fecha_actualizacion'],
@@ -145,17 +175,18 @@ class OrdenDAO
    */
   public function registrarOrden(Orden $o)
   {
-    $sql = "INSERT INTO ordenes (almacen_id, alimento_id, cantidad, fecha_creacion, hora_creacion, fecha_actualizacion, hora_actualizacion, estado_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO ordenes (almacen_id, alimento_id, cantidad, categoria_id, fecha_creacion, hora_creacion, fecha_actualizacion, hora_actualizacion, estado_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $this->conn->prepare($sql);
     $alm_i = $o->getAlmacen_id();
     $ali_i = $o->getAlimento_id();
     $c = $o->getCantidad();
     $fc = $o->getFecha_creacion();
     $hc = $o->getHora_creacion();
+    $ca = $o->getCategoria_id();
     $fa = $o->getFecha_actualizacion();
     $ha = $o->getHora_actualizacion();
     $e_i = $o->getEstado_id();
-    $stmt->bind_param("iiissssi", $alm_i, $ali_i, $c, $fc, $hc, $fa, $ha, $e_i);
+    $stmt->bind_param("iiiissssi", $alm_i, $ali_i, $c, $ca, $fc, $hc, $fa, $ha, $e_i);
 
     if (!$stmt->execute()) {
       die("Error en execute (inserción): " . $stmt->error);
@@ -172,18 +203,19 @@ class OrdenDAO
    */
   public function modificarOrden(Orden $o)
   {
-    $sql = "UPDATE ordenes SET almacen_id = ?, alimento_id = ?, cantidad = ?, fecha_creacion = ?, hora_creacion = ?,fecha_actualizacion = ?, hora_actualizacion = ?, estado_id = ? WHERE id = ?";
+    $sql = "UPDATE ordenes SET almacen_id = ?, alimento_id = ?, cantidad = ?, categoria_id = ?, fecha_creacion = ?, hora_creacion = ?,fecha_actualizacion = ?, hora_actualizacion = ?, estado_id = ? WHERE id = ?";
     $stmt = $this->conn->prepare($sql);
     $alm_i = $o->getAlmacen_id();
     $ali_i = $o->getAlimento_id();
     $c = $o->getCantidad();
+    $ca = $o->getCategoria_id();
     $fc = $o->getFecha_creacion();
     $hc = $o->getHora_creacion();
     $fa = $o->getFecha_actualizacion();
     $ha = $o->getHora_actualizacion();
     $e_i = $o->getEstado_id();
     $id = $o->getId();
-    $stmt->bind_param("iiissssii", $alm_i, $ali_i, $c, $fc, $hc, $fa, $ha, $e_i, $id);
+    $stmt->bind_param("iiiissssii", $alm_i, $ali_i, $c, $ca, $fc, $hc, $fa, $ha, $e_i, $id);
 
     return $stmt->execute();
   }
@@ -227,7 +259,7 @@ class OrdenDAO
    * @param array $estado_id Array de IDs de estados.
    * @return array Un array de objetos Orden que coinciden con los filtros.
    */
-  public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id)
+  public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id, array $categoria_id)
   {
     // Construye la consulta SQL dinámicamente.
     $sql = "SELECT * FROM ordenes WHERE 1=1";
@@ -253,6 +285,13 @@ class OrdenDAO
       $sql .= " AND estado_id IN ($placeholders)";
       $params = array_merge($params, $estado_id);
       $tipos .= str_repeat('i', count($estado_id));
+    }
+
+    if (!empty($categoria_id)) {
+      $placeholders = implode(',', array_fill(0, count($categoria_id), '?'));
+      $sql .= " AND categoria_id IN ($placeholders)";
+      $params = array_merge($params, $categoria_id);
+      $tipos .= str_repeat('i', count($categoria_id));
     }
 
     $sql .= " ORDER BY id";
@@ -288,6 +327,7 @@ class OrdenDAO
         $row['almacen_id'],
         $row['alimento_id'],
         $row['cantidad'],
+        $row['categoria_id'],
         $row['fecha_creacion'],
         $row['hora_creacion'],
         $row['fecha_actualizacion'],

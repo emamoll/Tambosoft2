@@ -166,6 +166,11 @@ class PotreroController
   {
     return $this->potreroDAO->getAllPotreros();
   }
+
+  public function getPotreroByCampoId($campo_id)
+  {
+    return $this->potreroDAO->getPotreroByCampo($campo_id);
+  }
 }
 
 

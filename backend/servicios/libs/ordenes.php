@@ -19,31 +19,33 @@ $ordenes = $controllerOrden->procesarFiltro();
 $pdf = new FPDF();
 $pdf->AddPage();
 $pdf->SetFont('Arial', 'B', 14);
-$pdf->Cell(0, 10, utf8_decode('Listado de Órdenes de Alimentos'), 0, 1, 'C');
+$pdf->Cell(0, 10, utf8_decode('Órdenes de Alimentos'), 0, 1, 'C');
 $pdf->Ln(5);
 
 // Encabezado
 $pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(15, 10, 'N', 1);
+$pdf->Cell(8, 10, 'N', 1);
 $pdf->Cell(30, 10, utf8_decode('Campo'), 1); 
-$pdf->Cell(30, 10, 'Alimento', 1);
-$pdf->Cell(20, 10, 'Cantidad', 1);
+$pdf->Cell(25, 10, 'Alimento', 1);
+$pdf->Cell(18, 10, 'Cantidad', 1);
+$pdf->Cell(20, 10, 'Categoria', 1);
 $pdf->Cell(30, 10, 'Fecha', 1);
 $pdf->Cell(20, 10, 'Hora', 1);
-$pdf->Cell(30, 10, 'Estado', 1);
+$pdf->Cell(44, 10, 'Estado', 1);
 $pdf->Ln();
 
 // Datos
 $pdf->SetFont('Arial', '', 10);
 foreach ($ordenes as $o) {
-  $pdf->Cell(15, 10, $o->getId(), 1);
+  $pdf->Cell(8, 10, $o->getId(), 1);
   $pdf->Cell(30, 10, utf8_decode($o->almacen_nombre ?? 'N/A'), 1); 
-  $pdf->Cell(30, 10, utf8_decode($o->alimento_nombre ?? 'N/A'), 1); 
-  $pdf->Cell(20, 10, $o->getCantidad(), 1);
+  $pdf->Cell(25, 10, utf8_decode($o->alimento_nombre ?? 'N/A'), 1); 
+  $pdf->Cell(18, 10, $o->getCantidad(), 1);
+  $pdf->Cell(20, 10, utf8_decode($o->categoria_nombre ?? 'N/A'), 1); 
   $fecha = date('d-m-Y', strtotime($o->getFecha_actualizacion()));
   $pdf->Cell(30, 10, $fecha, 1);
   $pdf->Cell(20, 10, $o->getHora_actualizacion(), 1); 
-  $pdf->Cell(30, 10, utf8_decode($o->estado_nombre ?? 'N/A'), 1); 
+  $pdf->Cell(44, 10, utf8_decode($o->estado_nombre ?? 'N/A'), 1); 
   $pdf->Ln();
 }
 

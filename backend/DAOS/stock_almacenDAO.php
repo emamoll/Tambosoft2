@@ -234,4 +234,90 @@ class Stock_AlmacenDAO
     }
     return $alimentosConStock;
   }
+
+  public function getStocksFiltradas(array $almacen_id, array $alimento_id)
+  {
+    // Construye la consulta SQL dinámicamente.
+    $sql = "SELECT * FROM stock_almacenes WHERE 1=1";
+    $params = [];
+    $tipos = '';
+
+    if (!empty($almacen_id)) {
+      $placeholders = implode(',', array_fill(0, count($almacen_id), '?'));
+      $sql .= " AND almacen_id IN ($placeholders)";
+      $params = array_merge($params, $almacen_id);
+      $tipos .= str_repeat('i', count($almacen_id));
+    }
+
+    if (!empty($alimento_id)) {
+      $placeholders = implode(',', array_fill(0, count($alimento_id), '?'));
+      $sql .= " AND alimento_id IN ($placeholders)";
+      $params = array_merge($params, $alimento_id);
+      $tipos .= str_repeat('i', count($alimento_id));
+    }
+
+    $sql .= " ORDER BY id";
+
+    $stmt = $this->conn->prepare($sql);
+    if ($stmt === false) {
+      error_log("Error en prepare (getStocksFiltradas): " . $this->conn->error);
+      return [];
+    }
+
+    // Vincula los parámetros dinámicamente.
+    if (!empty($params)) {
+      $bind_names = [];
+      $bind_names[] = $tipos;
+      foreach ($params as $key => $value) {
+        $bind_names[] = &$params[$key];
+      }
+      call_user_func_array([$stmt, 'bind_param'], $bind_names);
+    }
+
+    if (!$stmt->execute()) {
+      error_log("Error en execute (getStocksFiltradas): " . $stmt->error);
+      $stmt->close();
+      return [];
+    }
+
+    $resultado = $stmt->get_result();
+
+    $stocks = [];
+    while ($row = $resultado->fetch_assoc()) {
+      $stock = new Stock_Almacen(
+        $row['id'],
+        $row['almacen_id'],
+        $row['alimento_id'],
+        $row['stock']
+      );
+      $stocks[] = $stock;
+    }
+    $stmt->close();
+    return $stocks;
+  }
+
+  public function getTotalStockByAlimentoId($alimento_id)
+  {
+    $sql = "SELECT SUM(stock) AS total_stock FROM stock_almacenes WHERE alimento_id = ?";
+    $stmt = $this->conn->prepare($sql);
+    $stmt->bind_param("i", $alimento_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return $row['total_stock'] ?? 0;
+  }
+
+  public function getTotalEconomicValue()
+  {
+    $sql = "SELECT SUM(sa.stock * a.precio) AS total_valor FROM stock_almacenes sa JOIN alimentos a ON sa.alimento_id = a.id";
+    $result = $this->conn->query($sql);
+
+    if (!$result) {
+      error_log("Error en la consulta: " . $this->conn->error);
+      return 0;
+    }
+
+    $row = $result->fetch_assoc();
+    return $row['total_valor'] ?? 0;
+  }
 }

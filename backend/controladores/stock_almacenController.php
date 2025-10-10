@@ -4,6 +4,7 @@
 require_once __DIR__ . '../../DAOS/stock_almacenDAO.php';
 require_once __DIR__ . '../../DAOS/almacenDAO.php';
 require_once __DIR__ . '../../DAOS/alimentoDAO.php';
+require_once __DIR__ . '../../DAOS/alimentoDAO.php';
 
 /**
  * Clase controladora para gestionar las operaciones relacionadas con el stock en los almacenes.
@@ -22,6 +23,8 @@ class Stock_almacenController
   public function __construct()
   {
     $this->stock_almacenDAO = new Stock_AlmacenDAO();
+    $this->alimentoDAO = new AlimentoDAO();
+    $this->almacenDAO = new AlmacenDAO();
   }
 
   /**
@@ -114,6 +117,64 @@ class Stock_almacenController
     return $this->stock_almacenDAO->getStock_almacenByAlmacenId($almacen_id);
   }
 
+  public function procesarFiltro()
+  {
+    $stocks = [];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['aplicar_filtros']) || isset($_POST['limpiar_filtros']))) {
+      // Redirige a la misma página, pero con los parámetros de filtro en la URL (GET).
+      $redirectUrl = $_SERVER['PHP_SELF'];
+      $queryParams = [];
+      if (isset($_POST['limpiar_filtros'])) {
+        // No se añaden parámetros, la URL ya está limpia.
+      } elseif (isset($_POST['aplicar_filtros'])) {
+        // Añade los filtros seleccionados a los parámetros de la URL.
+        if (!empty($_POST['almacen_id'])) {
+          foreach ($_POST['almacen_id'] as $id) {
+            $queryParams[] = 'almacen_id[]=' . urlencode($id);
+          }
+        }
+        if (!empty($_POST['alimento_id'])) {
+          foreach ($_POST['alimento_id'] as $id) {
+            $queryParams[] = 'alimento_id[]=' . urlencode($id);
+          }
+        }
+      }
+      if (!empty($queryParams)) {
+        $redirectUrl .= '?' . implode('&', $queryParams);
+      }
+      header('Location: ' . $redirectUrl);
+      exit; // Es crucial salir después de la redirección.
+    }
+
+    // Si la petición es GET, procesa los filtros desde la URL.
+    $almacen_id_filtro = $_GET['almacen_id'] ?? [];
+    $alimento_id_filtro = $_GET['alimento_id'] ?? [];
+    if (empty($almacen_id_filtro) && empty($alimento_id_filtro)) {
+      $stocks = $this->stock_almacenDAO->getAllStock_almacenes();
+    } else {
+      $stocks = $this->stock_almacenDAO->getStocksFiltradas($almacen_id_filtro, $alimento_id_filtro);
+    }
+    // Enriquece las órdenes con nombres.
+    return $this->enrichStockWithNames($stocks);
+  }
+
+  private function enrichStockWithNames(array $stocks): array
+  {
+    foreach ($stocks as $stock) {
+      $almacen = $this->almacenDAO->getAlmacenById($stock->getAlmacen_id());
+      $stock->setAlmacen_nombre($almacen ? $almacen->getNombre() : 'Sin almacén');
+
+      $alimento = $this->alimentoDAO->getAlimentoById($stock->getAlimento_id());
+      $stock->setAlimento_nombre($alimento ? $alimento->getNombre() : 'Sin alimento');
+      $stock->setAlimento_precio($alimento ? $alimento->getPrecio() : 0);
+
+      // Nuevo: Calcular el stock total del alimento en todos los almacenes
+      $totalStockAlimento = $this->stock_almacenDAO->getTotalStockByAlimentoId($alimento->getId());
+      $stock->setTotalStock($totalStockAlimento); // Asigna el nuevo valor
+    }
+    return $stocks;
+  }
+
   /**
    * Obtiene todos los registros de stock de todos los almacenes.
    *
@@ -172,5 +233,10 @@ class Stock_almacenController
   public function reducirStock($almacen_id, $alimento_id, $cantidad)
   {
     return $this->stock_almacenDAO->reducirStock_almacen($almacen_id, $alimento_id, $cantidad);
+  }
+
+  public function getTotalEconomicValue()
+  {
+    return $this->stock_almacenDAO->getTotalEconomicValue();
   }
 }
