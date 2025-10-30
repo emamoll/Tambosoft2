@@ -29,4 +29,10 @@ class EstadoController
   {
     return $this->estadoDAO->getAllEstados();
   }
+
+    public function getEstadoById($id)
+  {
+    return $this->estadoDAO->getEstadoById($id);
+  }
 }
+

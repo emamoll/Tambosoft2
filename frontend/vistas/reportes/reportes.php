@@ -106,7 +106,7 @@ foreach ($ordenesGerencia as $o) { // Usar $ordenesGerencia para las estadístic
   <?php require_once __DIR__ . '../../secciones/navbar.php'; ?>
   <div class="main">
     <div class="form-container" id="formCampoContainer">
-      <div class="form-title">Reporte de Órdenes Entregadas</div>
+      <div class="form-title">Órdenes Entregadas</div>
       <!-- <form method="POST">
         <div class="botones-container">
           <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#filtroModal">

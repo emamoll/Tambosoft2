@@ -24,7 +24,15 @@ $accionOrden = $_POST['accionOrden'] ?? '';
 $controllerOrden = new OrdenController();
 
 $controllerEstado = new EstadoController();
+// Obtener todos los estados para el filtro y la tabla
 $estados = $controllerEstado->obtenerEstados();
+// Obtener el ID del estado "Creada" para el filtro
+$estadoCreada = $controllerEstado->getEstadoById(1);
+$estadoCreadaId = $estadoCreada ? $estadoCreada->getId() : null;
+// Filtrar los estados para que no aparezca la opción "Creada" en el modal
+$estadosParaFiltro = array_filter($estados, function ($e) use ($estadoCreadaId) {
+  return $e->getId() != $estadoCreadaId;
+});
 
 $controllerAlmacen = new AlmacenController(); // Necesario para el filtro de almacenes
 $almacenes = $controllerAlmacen->obtenerAlmacenes();
@@ -50,25 +58,6 @@ $filtrosAplicados = [
   'almacen_id' => $_GET['almacen_id'] ?? [],
   'alimento_id' => $_GET['alimento_id'] ?? []
 ];
-
-// Lógica de estadísticas (aquí no la necesitaremos, pero la pongo comentada si se llegara a usar en el futuro)
-/*
-$estadisticas = [
-  1 => 0, // Creada
-  2 => 0, // Enviada
-  3 => 0, // En Preparación
-  4 => 0, // En Traslado
-  5 => 0, // Entregada
-  6 => 0, // Cancelada
-];
-
-foreach ($ordenes as $o) {
-  $estado_id = $o->getEstado_id(); // O getEstadoId() si ese es el método
-  if (isset($estadisticas[$estado_id])) {
-    $estadisticas[$estado_id]++;
-  }
-}
-*/
 
 ?>
 
@@ -240,7 +229,7 @@ foreach ($ordenes as $o) {
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label">Estado</label><br>
-              <?php foreach ($estados as $e): ?>
+              <?php foreach ($estadosParaFiltro as $e): ?>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" name="estado_id[]"
                     value="<?= htmlspecialchars($e->getId()) ?>" id="estado_<?= htmlspecialchars($e->getId()) ?>"
@@ -425,7 +414,7 @@ foreach ($ordenes as $o) {
       // Si deseas que el gráfico funcione, debes descomentar la sección PHP de '$estadisticas'
       // para que esta variable esté definida antes de ser usada aquí.
       // Si no necesitas el gráfico en esta vista, puedes eliminar esta parte del JavaScript.
-      
+
 
       const ctx = document.getElementById('graficoEstados').getContext('2d');
       new Chart(ctx, {

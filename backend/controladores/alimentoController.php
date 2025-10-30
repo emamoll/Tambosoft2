@@ -145,4 +145,9 @@ class AlimentoController
   {
     return $this->alimentoDAO->getAlimentosPorIds($ids);
   }
+
+    public function getAlimentoById( $id)
+  {
+    return $this->alimentoDAO->getAlimentoById($id);
+  }
 }

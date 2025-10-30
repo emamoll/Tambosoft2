@@ -12,6 +12,8 @@ require_once __DIR__ . '../backend/controladores/pasturaController.php';
 require_once __DIR__ . '../backend/controladores/potreroController.php';
 require_once __DIR__ . '../backend/controladores/stock_almacenController.php';
 require_once __DIR__ . '../backend/modelos//orden_cancelada/orden_canceladaTabla.php';
+require_once __DIR__ . '../backend/controladores/proveedorController.php';
+
 
 try {
   new UsuarioController();
@@ -24,6 +26,7 @@ try {
   new PasturaController();
   new PotreroController();
   new Stock_almacenController();
+  new ProveedorController();
 
   $db = DatabaseFactory::createDatabaseConnection('mysql');
   $orden_canceladaCrearTabla = new Orden_canceladaCrearTabla($db);

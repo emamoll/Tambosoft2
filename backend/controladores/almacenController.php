@@ -153,4 +153,9 @@ class AlmacenController
   {
     return $this->almacenDAO->getAlmacenByNombre($almacen_nombre);
   }
+
+    public function getAlmacenById($almacen_id)
+  {
+    return $this->almacenDAO->getAlmacenById($almacen_id);
+  }
 }
