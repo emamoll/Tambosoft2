@@ -6,7 +6,6 @@ require_once __DIR__ . '../../../../backend/controladores/alimentoController.php
 require_once __DIR__ . '../../../../backend/controladores/ordenController.php';
 require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
 require_once __DIR__ . '../../../../backend/servicios/libs/fpdf.php';
-require_once __DIR__ . '../../../../backend/controladores/categoriaController.php';
 
 session_start();
 if (!isset($_SESSION['username']) || !isset($_SESSION['rol_id'])) {
@@ -31,9 +30,6 @@ $alimentos = $controllerAlimento->obtenerAlimentos();
 $controllerCategoria = new CategoriaController();
 $categorias = $controllerCategoria->obtenerCategorias();
 
-$controllerCategoria = new CategoriaController();
-$categorias = $controllerCategoria->obtenerCategorias();
-
 $ordenAModificar = null;
 if ($accion === 'modificar' && isset($_POST['orden_id'])) {
   $ordenAModificar = $controllerOrden->obtenerOrdenPorId($_POST['orden_id']);
@@ -50,25 +46,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accionOrden'])) {
   }
 }
 
-// SIMPLIFICADO: Siempre llamamos a procesarFiltro.
-// procesarFiltro() se encargará de devolver todas las órdenes si no se aplicó un filtro,
-// o las órdenes filtradas si el modal de filtro fue enviado.
+// Siempre llamamos a procesarFiltro.
 $ordenes = $controllerOrden->procesarFiltro();
 
+// Filtros aplicados (incluye fechas)
 $filtrosAplicados = [
   'estado_id' => $_GET['estado_id'] ?? [],
   'almacen_id' => $_GET['almacen_id'] ?? [],
   'categoria_id' => $_GET['categoria_id'] ?? [],
-  'alimento_id' => $_GET['alimento_id'] ?? []
+  'alimento_id' => $_GET['alimento_id'] ?? [],
+  'fecha_inicio' => $_GET['fecha_inicio'] ?? '',
+  'fecha_fin' => $_GET['fecha_fin'] ?? ''
 ];
 
+// Estadísticas para el gráfico
 $estadisticas = [
   1 => 0, // Creada
   2 => 0, // Enviada
   3 => 0, // En Preparación
   4 => 0, // En Traslado
   5 => 0, // Entregada
-  6 => 0, // Cancelada
+  6 => 0  // Cancelada
 ];
 
 foreach ($ordenes as $o) {
@@ -76,6 +74,12 @@ foreach ($ordenes as $o) {
   if (isset($estadisticas[$estado_id])) {
     $estadisticas[$estado_id]++;
   }
+}
+
+// Mapeo opcional id->nombre (por si querés usarlo más adelante)
+$labelsEstados = [];
+foreach ($estados as $e) {
+  $labelsEstados[$e->getId()] = $e->getNombre();
 }
 
 ?>
@@ -159,12 +163,9 @@ foreach ($ordenes as $o) {
               </select>
             </div>
             <div class="form-group" id="stock_disponible_container"
-              style="display: none; margin-top: 5px; font-size: 0.85em;">
-              Stock disponible: <span id="stock_disponible" style="font-weight: bold; color: #333;"></span>
-            </div>
-            <div class="form-group" id="stock_disponible_container"
-              style="display: none; margin-top: 5px; font-size: 0.85em;">
-              Stock disponible: <span id="stock_disponible" style="font-weight: bold; color: #333;"></span>
+              style="display:none; margin-top:5px; font-size:0.85em;">
+              Stock disponible:
+              <span id="stock_disponible" style="font-weight:bold; color:#333;"></span>
             </div>
             <div class="form-group">
               <input type="number" id="cantidad" name="cantidad"
@@ -185,7 +186,7 @@ foreach ($ordenes as $o) {
                   confirmButtonColor: '#3085d6'
                 }).then(() => {
                   <?php if ($mensaje["tipo"] === "success"): ?>
-                    window.location.href = window.location.pathname; // recargar sin reenviar POST
+                    window.location.href = window.location.pathname;
                   <?php endif; ?>
                 });
               </script>
@@ -213,22 +214,38 @@ foreach ($ordenes as $o) {
       <tbody>
         <?php if (!empty($ordenes)): ?>
           <?php foreach ($ordenes as $o): ?>
+            <?php
+            // Clases de estado (las tenés definidas en estilos.css)
+            switch ($o->getEstado_id()) {
+              case 1:
+                $estadoClass = 'estado-creada';
+                break;
+              case 2:
+                $estadoClass = 'estado-enviada';
+                break;
+              case 3:
+                $estadoClass = 'estado-enPreparacion';
+                break;
+              case 4:
+                $estadoClass = 'estado-enTraslado';
+                break;
+              case 5:
+                $estadoClass = 'estado-entregada';
+                break;
+              case 6:
+                $estadoClass = 'estado-cancelada';
+                break;
+              default:
+                $estadoClass = '';
+                break;
+            }
+            ?>
             <tr>
-              <td>
-                <?= htmlspecialchars($o->getId()) ?>
-              </td>
-              <td>
-                <?= htmlspecialchars($o->almacen_nombre ?? '') ?>
-              </td>
-              <td>
-                <?= htmlspecialchars($o->alimento_nombre ?? '') ?>
-              </td>
-              <td>
-                <?= htmlspecialchars($o->categoria_nombre ?? '') ?>
-              </td>
-              <td>
-                <?= htmlspecialchars($o->getCantidad()) ?>
-              </td>
+              <td><?= htmlspecialchars($o->getId()) ?></td>
+              <td><?= htmlspecialchars($o->almacen_nombre ?? '') ?></td>
+              <td><?= htmlspecialchars($o->alimento_nombre ?? '') ?></td>
+              <td><?= htmlspecialchars($o->categoria_nombre ?? '') ?></td>
+              <td><?= htmlspecialchars($o->getCantidad()) ?></td>
               <td>
                 <?php
                 $fecha = $o->getFecha_actualizacion();
@@ -236,53 +253,41 @@ foreach ($ordenes as $o) {
                 echo htmlspecialchars($fechaFormateada);
                 ?>
               </td>
+              <td><?= htmlspecialchars($o->getHora_actualizacion()) ?></td>
               <td>
-                <?= htmlspecialchars($o->getHora_actualizacion()) ?>
-              </td>
-              <td>
-                <span class="<?php
-                $estado_id = $o->getEstado_id();
-                if ($estado_id == 1) {
-                  echo 'estado-creada';
-                } elseif ($estado_id == 2) {
-                  echo 'estado-enviada';
-                } elseif ($estado_id == 3) {
-                  echo 'estado-enPreparacion';
-                } elseif ($estado_id == 4) {
-                  echo 'estado-enTraslado';
-                } elseif ($estado_id == 5) {
-                  echo 'estado-entregada';
-                } elseif ($estado_id == 6) {
-                  echo 'estado-cancelada';
-                } else {
-                  echo 'estado-desconocido';
-                }
-                ?>">
+                <span class="<?= $estadoClass ?>">
                   <?= htmlspecialchars($o->estado_nombre ?? '') ?>
                 </span>
               </td>
-              <td>
+              <td class="acciones-cell">
                 <?php if ($o->getEstado_id() == 1): ?>
+                  <!-- Modificar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <input type="hidden" name="accion" value="modificar">
-                    <button type="submit" class="btn btn-success btn-sm">Modificar</button>
+                    <button type="submit" class="btn btn-sm btn-info" style="color:white" title="Modificar">Modificar</button>
                   </form>
 
+                  <!-- Enviar -->
                   <form method="POST" style="display:inline;">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
-                    <button type="submit" name="accionOrden" value="enviar" class="btn btn-success btn-sm">Enviar</button>
+                    <button type="submit" name="accionOrden" value="enviar" class="btn btn-sm btn-success"
+                      title="Enviar">Enviar</button>
                   </form>
 
+                  <!-- Cancelar (con motivo) -->
                   <form method="POST" style="display:inline;" onsubmit="return showCancelModal(this);">
                     <input type="hidden" name="orden_id" value="<?= htmlspecialchars($o->getId()) ?>">
                     <input type="hidden" name="accionOrden" value="cancelar">
                     <input type="hidden" name="descripcion" id="cancel_description_<?= htmlspecialchars($o->getId()) ?>">
-                    <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-danger" title="Cancelar">Cancelar</button>
                   </form>
+
                 <?php elseif ($o->getEstado_id() == 6): ?>
-                  <button type="button" class="btn btn-danger btn-sm"
+                  <!-- Ver motivo de cancelación -->
+                  <button type="button" class="btn btn-sm btn-dark" title="Ver Motivo"
                     onclick="viewCancelReason(<?= htmlspecialchars($o->getId()) ?>)">Ver Motivo</button>
+
                 <?php else: ?>
                   <span class="text-muted">-</span>
                 <?php endif; ?>
@@ -295,16 +300,20 @@ foreach ($ordenes as $o) {
           </tr>
         <?php endif; ?>
       </tbody>
-    </table></br>
+    </table><br>
+
     <form action="../../../backend/servicios/libs/ordenes.php" method="GET" target="_blank" class="botonPDF">
       <button type="submit" name="generar_pdf" class="btn btn-danger">Descargar PDF</button>
       <?php
-      // Añadir inputs ocultos para cada filtro aplicado que viene en $_GET
       foreach ($filtrosAplicados as $filterName => $filterValues) {
-        if (is_array($filterValues) && !empty($filterValues)) {
-          foreach ($filterValues as $value) {
-            echo '<input type="hidden" name="' . htmlspecialchars($filterName) . '[]" value="' . htmlspecialchars($value) . '">';
+        if (is_array($filterValues)) {
+          if (!empty($filterValues)) {
+            foreach ($filterValues as $value) {
+              echo '<input type="hidden" name="' . htmlspecialchars($filterName) . '[]" value="' . htmlspecialchars($value) . '">';
+            }
           }
+        } elseif (!empty($filterValues)) {
+          echo '<input type="hidden" name="' . htmlspecialchars($filterName) . '" value="' . htmlspecialchars($filterValues) . '">';
         }
       }
       ?>
@@ -314,9 +323,9 @@ foreach ($ordenes as $o) {
     <div style="max-width: 500px; margin: 0 auto 30px;">
       <canvas id="graficoEstados" width="400" height="400"></canvas>
     </div>
-
   </div>
 
+  <!-- MODAL FILTROS -->
   <div class="modal fade" id="filtroModal" tabindex="-1" aria-labelledby="filtroModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -326,6 +335,21 @@ foreach ($ordenes as $o) {
         </div>
         <form id="filtroForm" method="GET">
           <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Rango de Fecha de Actualización</label>
+              <div class="row">
+                <div class="col-6">
+                  <label for="fecha_inicio" class="form-label">Desde:</label>
+                  <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio"
+                    value="<?= htmlspecialchars($filtrosAplicados['fecha_inicio']) ?>">
+                </div>
+                <div class="col-6">
+                  <label for="fecha_fin" class="form-label">Hasta:</label>
+                  <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
+                    value="<?= htmlspecialchars($filtrosAplicados['fecha_fin']) ?>">
+                </div>
+              </div>
+            </div>
             <div class="mb-3">
               <label class="form-label">Estado</label><br>
               <?php foreach ($estados as $e): ?>
@@ -377,13 +401,14 @@ foreach ($ordenes as $o) {
           </div>
           <div class="botones-container botones-filtros">
             <button type="submit" class="btn btn-primary" name="aplicar_filtros" value="true">Aplicar</button>
-            <!-- <button type="button" class="btn btn-primary" id="limpiarFiltrosBtn">Limpiar Filtros</button> -->
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>
+        </form>
       </div>
     </div>
   </div>
 
+  <!-- MODAL CANCELAR (INGRESAR MOTIVO) -->
   <div class="modal fade" id="cancelReasonModal" tabindex="-1" aria-labelledby="cancelReasonModalLabel"
     aria-hidden="true">
     <div class="modal-dialog">
@@ -404,6 +429,7 @@ foreach ($ordenes as $o) {
     </div>
   </div>
 
+  <!-- MODAL VER MOTIVO -->
   <div class="modal fade" id="viewCancelReasonModal" tabindex="-1" aria-labelledby="viewCancelReasonModalLabel"
     aria-hidden="true">
     <div class="modal-dialog">
@@ -424,265 +450,284 @@ foreach ($ordenes as $o) {
     </div>
   </div>
 
-
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+
       const almacenSelect = document.getElementById('almacen_nombre_select');
       const alimentoSelect = document.getElementById('alimento_nombre_select');
       const categoriaSelect = document.getElementById('categoria_nombre_select');
       const stockDisplay = document.getElementById('stock_disponible');
       const stockContainer = document.getElementById('stock_disponible_container');
       const cantidadInput = document.getElementById('cantidad');
-      const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
-      const filtroForm = document.getElementById('filtroForm');
+
       const ordenModificarAlmacenIdInput = document.getElementById('orden_modificar_almacen_id');
       const ordenModificarAlimentoIdInput = document.getElementById('orden_modificar_alimento_id');
       const ordenModificarCategoriaIdInput = document.getElementById('orden_modificar_categoria_id');
       const ordenModificarCantidadInput = document.getElementById('orden_modificar_cantidad');
 
-      stockContainer.style.display = 'none';
+      // ============================
+      //   BLOQUE FORMULARIO ORDEN
+      // ============================
+      if (
+        almacenSelect &&
+        alimentoSelect &&
+        categoriaSelect &&
+        stockDisplay &&
+        stockContainer &&
+        cantidadInput
+      ) {
 
-      function fetchAndPopulateAlimentos(almacenId, selectedAlimentoId = null, callback = null) {
-        alimentoSelect.innerHTML = '<option value="" disabled selected>Cargando alimentos...</option>';
-        stockDisplay.textContent = '';
         stockContainer.style.display = 'none';
 
-        if (almacenId) {
-          fetch(`../../../backend/api/api.php?action=getAlimentosByAlmacen&almacenId=${almacenId}`)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.json();
-            })
-            .then(data => {
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un alimento</option>';
-              data.forEach(alimento => {
-                const option = document.createElement('option');
-                option.value = alimento.id;
-                option.textContent = alimento.nombre;
-                alimentoSelect.appendChild(option);
-              });
+        function fetchAndPopulateAlimentos(almacenId, selectedAlimentoId = null, callback = null) {
 
-              if (selectedAlimentoId) {
-                alimentoSelect.value = selectedAlimentoId;
-                alimentoSelect.dispatchEvent(new Event('change'));
-              }
+          alimentoSelect.innerHTML =
+            '<option value="" disabled selected>Cargando alimentos...</option>';
 
-              if (callback) callback();
-            })
-            .catch(error => {
-              console.error('Error al obtener alimentos:', error);
-              alimentoSelect.innerHTML = `<option value="" disabled selected>Error al cargar alimentos: ${error.message}</option>`;
-              stockContainer.style.display = 'none';
-            });
-        } else {
-          alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un almacén primero</option>';
           stockDisplay.textContent = '';
           stockContainer.style.display = 'none';
+
+          if (almacenId) {
+            fetch(`../../../backend/api/api.php?action=getAlimentosByAlmacen&almacenId=${almacenId}`)
+              .then(resp => resp.json())
+              .then(data => {
+                alimentoSelect.innerHTML = '<option value="" disabled selected>Seleccione un alimento</option>';
+
+                data.forEach(alimento => {
+                  const op = document.createElement('option');
+                  op.value = alimento.id;
+                  op.textContent = alimento.nombre;
+                  alimentoSelect.appendChild(op);
+                });
+
+                if (selectedAlimentoId) {
+                  alimentoSelect.value = selectedAlimentoId;
+                  alimentoSelect.dispatchEvent(new Event('change'));
+                }
+
+                if (callback) callback();
+              })
+              .catch(err => {
+                alimentoSelect.innerHTML =
+                  `<option value="" disabled selected>Error al cargar: ${err.message}</option>`;
+              });
+
+          } else {
+            alimentoSelect.innerHTML =
+              '<option value="" disabled selected>Seleccione un campo primero</option>';
+          }
         }
-      }
 
-      almacenSelect.addEventListener('change', function () {
-        const almacenId = this.value;
-        fetchAndPopulateAlimentos(almacenId);
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
-      });
+        almacenSelect.addEventListener('change', function () {
+          fetchAndPopulateAlimentos(this.value);
+          stockDisplay.textContent = '';
+          stockContainer.style.display = 'none';
+        });
 
-      categoriaSelect.addEventListener('change', function () {
-        const categoriaId = this.value;
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
-      });
+        alimentoSelect.addEventListener('change', function () {
 
-      alimentoSelect.addEventListener('change', function () {
-        const almacenId = almacenSelect.value;
-        const alimentoId = this.value;
-        stockDisplay.textContent = '';
-        stockContainer.style.display = 'none';
+          const almacenId = almacenSelect.value;
+          const alimentoId = this.value;
 
-        if (almacenId && alimentoId) {
-          fetch(`../../../backend/api/api.php?action=getStockForAlimento&almacenId=${almacenId}&alimentoId=${alimentoId}`)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.json();
-            })
-            .then(data => {
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              if (data.stock !== undefined) {
-                stockDisplay.textContent = data.stock;
+          stockDisplay.textContent = '';
+          stockContainer.style.display = 'none';
+
+          if (almacenId && alimentoId) {
+            fetch(`../../../backend/api/api.php?action=getStockForAlimento&almacenId=${almacenId}&alimentoId=${alimentoId}`)
+              .then(resp => resp.json())
+              .then(data => {
+
+                if (data.stock !== undefined) {
+                  stockDisplay.textContent = data.stock;
+                  stockContainer.style.display = 'block';
+                } else {
+                  stockDisplay.textContent = '0';
+                  stockContainer.style.display = 'none';
+                }
+
+              })
+              .catch(e => {
+                stockDisplay.textContent = 'Error';
                 stockContainer.style.display = 'block';
-              } else {
-                stockDisplay.textContent = '0';
-                stockContainer.style.display = 'none';
-              }
-            })
-            .catch(error => {
-              console.error('Error al obtener stock:', error);
-              stockDisplay.textContent = 'Error';
-              stockContainer.style.display = 'block';
-            });
+              });
+          }
+        });
+
+        cantidadInput.addEventListener('input', function () {
+          const req = parseInt(this.value);
+          const disp = parseInt(stockDisplay.textContent || '0');
+          if (!isNaN(req) && !isNaN(disp) && req > disp) {
+            this.setCustomValidity('La cantidad supera el stock disponible');
+          } else {
+            this.setCustomValidity('');
+          }
+        });
+
+        if (
+          ordenModificarAlmacenIdInput &&
+          ordenModificarAlimentoIdInput &&
+          ordenModificarCategoriaIdInput &&
+          ordenModificarCantidadInput
+        ) {
+
+          const alm = ordenModificarAlmacenIdInput.value;
+          const ali = ordenModificarAlimentoIdInput.value;
+          const cat = ordenModificarCategoriaIdInput.value;
+          const cant = ordenModificarCantidadInput.value;
+
+          if (alm) almacenSelect.value = alm;
+          if (cat) categoriaSelect.value = cat;
+          if (cant) cantidadInput.value = cant;
+
+          if (alm) {
+            fetchAndPopulateAlimentos(alm, ali);
+          }
         }
-      });
-
-      cantidadInput.addEventListener('input', function () {
-        const requestedQuantity = parseInt(this.value);
-        const availableStock = parseInt(stockDisplay.textContent);
-
-        if (requestedQuantity > availableStock) {
-          this.setCustomValidity('La cantidad solicitada excede el stock disponible.');
-        } else {
-          this.setCustomValidity('');
-        }
-      });
-
-      // Prepopular campos si estamos en modo modificar
-      if (ordenModificarAlmacenIdInput && ordenModificarAlimentoIdInput && ordenModificarCantidadInput && ordenModificarCategoriaInput) {
-        const initialAlmacenId = ordenModificarAlmacenIdInput.value;
-        const initialAlimentoId = ordenModificarAlimentoIdInput.value;
-        const initialCategoriaId = ordenModificarCategoriaIdInput.value;
-        const initialCantidad = ordenModificarCantidadInput.value;
-
-        almacenSelect.value = initialAlmacenId;
-        categoriaSelect.value = initialCategoriaId
-        cantidadInput.value = initialCantidad;
-
-        fetchAndPopulateAlimentos(initialAlmacenId, initialAlimentoId);
       }
 
-      limpiarFiltrosBtn.addEventListener('click', function () {
-        // Desmarcar todos los checkboxes
-        const checkboxes = filtroForm.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(chk => chk.checked = false);
+      // ============================
+      //   GRÁFICO CHART.JS
+      // ============================
+      const estadisticas = <?= json_encode($estadisticas) ?>;
+      const total = <?= array_sum($estadisticas) ?>;
 
-        // Crear un input oculto para indicar que se están limpiando filtros
-        const inputReset = document.createElement('input');
-        inputReset.type = 'hidden';
-        inputReset.name = 'limpiar_filtros';
-        inputReset.value = 'true';
-        filtroForm.appendChild(inputReset);
+      const canvas = document.getElementById('graficoEstados');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
 
-        // Enviar el formulario
-        filtroForm.submit();
-      });
-      // Evitar reenvío al actualizar
-      if (window.history.replaceState) {
-        window.history.replaceState(null, null, window.location.href);
-      }
-    });
-
-    // Gráfico Chart.js
-    const total = <?= array_sum($estadisticas) ?>;
-    const dataEstados = [
-      <?= $estadisticas[1] ?>,
-      <?= $estadisticas[2] ?>,
-      <?= $estadisticas[3] ?>,
-      <?= $estadisticas[4] ?>,
-      <?= $estadisticas[5] ?>,
-      <?= $estadisticas[6] ?>
-    ];
-
-    const ctx = document.getElementById('graficoEstados').getContext('2d');
-    new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['Creada', 'Enviada', 'En preparacion para envio', 'Trasladando a campo', 'Entregada en campo', 'Cancelada'],
-        datasets: [{
-          label: 'Órdenes por estado',
-          data: dataEstados,
-          backgroundColor: ['#a81d6a', '#1d6ea8', '#e6df1c', '#e6661c', '#5cb85c', '#db3630']
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom' },
-          title: {
-            // display: true,
-            // text: 'Distribución de órdenes por estado'
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: ['Creada', 'Enviada', 'En preparación', 'Traslado', 'Entregada', 'Cancelada'],
+            datasets: [{
+              data: [
+                estadisticas[1],
+                estadisticas[2],
+                estadisticas[3],
+                estadisticas[4],
+                estadisticas[5],
+                estadisticas[6]
+              ],
+              backgroundColor: [
+                '#a81d6a', // Creada
+                '#1d6ea8', // Enviada
+                '#e6df1c', // En preparación
+                '#e6661c', // Traslado
+                '#5cb85c', // Entregada
+                '#db3630'  // Cancelada
+              ]
+            }]
           },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const value = context.raw;
-                const percentage = (value / total * 100).toFixed(1);
-                return `${label}: ${value} (${percentage}%)`;
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const perc = total > 0 ? (value / total * 100).toFixed(1) : 0;
+                    return `${label}: ${value} (${perc}%)`;
+                  }
+                }
               }
             }
           }
-        }
-      }
-    });
-
-    let currentCancelForm = null;
-
-    function showCancelModal(form) {
-      currentCancelForm = form;
-      const cancelReasonModal = new bootstrap.Modal(document.getElementById('cancelReasonModal'));
-      cancelReasonModal.show();
-      return false; // Prevenir el envío inmediato del formulario
-    }
-
-    document.getElementById('confirmCancelBtn').addEventListener('click', function () {
-      const description = document.getElementById('cancelReasonTextarea').value;
-      if (currentCancelForm && description) {
-        // Encontrar el input oculto con el ID específico para el orden_id del formulario actual
-        currentCancelForm.querySelector('#cancel_description_' + currentCancelForm.elements.orden_id.value).value = description;
-
-        // Ocultar modal y enviar formulario
-        const cancelModalInstance = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
-        if (cancelModalInstance) {
-          cancelModalInstance.hide();
-        }
-        currentCancelForm.submit();
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Por favor, ingresá el motivo de la cancelación.',
-          confirmButtonColor: '#3085d6'
         });
       }
-    });
 
-    function viewCancelReason(ordenId) {
-      fetch(`../../../backend/api/api.php?action=getCancelacionDetail&ordenId=${ordenId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
+      // ============================
+      //   CANCELAR CON MOTIVO
+      // ============================
+      let currentCancelForm = null;
+
+      window.showCancelModal = function (form) {
+        currentCancelForm = form;
+        const modalEl = document.getElementById('cancelReasonModal');
+        if (!modalEl) return false;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        return false; // evita submit inmediato
+      };
+
+      const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+      const cancelReasonTextarea = document.getElementById('cancelReasonTextarea');
+
+      if (confirmCancelBtn && cancelReasonTextarea) {
+        confirmCancelBtn.addEventListener('click', function () {
+          const motivo = cancelReasonTextarea.value.trim();
+
+          if (!motivo) {
             Swal.fire({
               icon: 'error',
               title: 'Error',
-              text: data.error,
-              confirmButtonColor: '#3085d6'
+              text: 'Debés ingresar un motivo para cancelar.'
             });
-          } else {
-            document.getElementById('viewCancelDate').textContent = data.fecha;
-            document.getElementById('viewCancelHour').textContent = data.hora;
-            document.getElementById('viewCancelDescription').textContent = data.descripcion;
-            const viewCancelReasonModal = new bootstrap.Modal(document.getElementById('viewCancelReasonModal'));
-            viewCancelReasonModal.show();
+            return;
           }
-        })
-        .catch(error => {
-          console.error('Error al obtener detalle de cancelación:', error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Hubo un problema al cargar el detalle de la cancelación.',
-            confirmButtonColor: '#3085d6'
-          });
-        });
-    }
 
-    // Restablecer el textarea cuando el modal se cierra
-    document.getElementById('cancelReasonModal').addEventListener('hidden.bs.modal', function () {
-      document.getElementById('cancelReasonTextarea').value = '';
+          if (currentCancelForm) {
+            const ordenId = currentCancelForm.querySelector('input[name="orden_id"]').value;
+            const hiddenInput = currentCancelForm.querySelector('#cancel_description_' + ordenId);
+            if (hiddenInput) {
+              hiddenInput.value = motivo;
+            }
+
+            const modalEl = document.getElementById('cancelReasonModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            currentCancelForm.submit();
+          }
+        });
+      }
+
+      const cancelReasonModal = document.getElementById('cancelReasonModal');
+      if (cancelReasonModal && cancelReasonTextarea) {
+        cancelReasonModal.addEventListener('hidden.bs.modal', function () {
+          cancelReasonTextarea.value = '';
+        });
+      }
+
+      // ============================
+      //   VER MOTIVO DE CANCELACIÓN
+      // ============================
+      window.viewCancelReason = function (ordenId) {
+        fetch(`../../../backend/api/api.php?action=getCancelacionDetail&ordenId=${ordenId}`)
+          .then(resp => resp.json())
+          .then(data => {
+            if (data.error) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error
+              });
+              return;
+            }
+
+            const dateEl = document.getElementById('viewCancelDate');
+            const hourEl = document.getElementById('viewCancelHour');
+            const descEl = document.getElementById('viewCancelDescription');
+
+            if (dateEl) dateEl.textContent = data.fecha || '';
+            if (hourEl) hourEl.textContent = data.hora || '';
+            if (descEl) descEl.textContent = data.descripcion || '';
+
+            const modalEl = document.getElementById('viewCancelReasonModal');
+            if (!modalEl) return;
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Hubo un problema al cargar el motivo de la cancelación.'
+            });
+          });
+      };
+
     });
   </script>
 </body>

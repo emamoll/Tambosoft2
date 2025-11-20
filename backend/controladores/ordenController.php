@@ -215,10 +215,7 @@ class OrdenController
         } else {
           return ['tipo' => 'error', 'mensaje' => 'Error al eliminar la orden'];
         }
-      // Lógica para cambiar el estado de la orden. Cada caso es similar:
-      // 1. Obtiene la orden actual.
-      // 2. Valida que el estado actual sea el correcto para el cambio.
-      // 3. Crea una nueva instancia de Orden con el nuevo estado y la actualiza.
+      // Lógica para cambiar el estado de la orden.
       case 'enviar':
         $ordenActual = $this->ordenDAO->getOrdenById($id);
         if (!$ordenActual) {
@@ -354,14 +351,19 @@ class OrdenController
   public function procesarFiltro()
   {
     $ordenes = [];
+
+    // --- Lógica PRG (POST/Redirect/Get) para aplicar filtros ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['aplicar_filtros']) || isset($_POST['limpiar_filtros']))) {
       // Redirige a la misma página, pero con los parámetros de filtro en la URL (GET).
       $redirectUrl = $_SERVER['PHP_SELF'];
       $queryParams = [];
+
       if (isset($_POST['limpiar_filtros'])) {
         // No se añaden parámetros, la URL ya está limpia.
       } elseif (isset($_POST['aplicar_filtros'])) {
         // Añade los filtros seleccionados a los parámetros de la URL.
+
+        // Filtros de IDs (array)
         if (!empty($_POST['estado_id'])) {
           foreach ($_POST['estado_id'] as $id) {
             $queryParams[] = 'estado_id[]=' . urlencode($id);
@@ -382,24 +384,43 @@ class OrdenController
             $queryParams[] = 'categoria_id[]=' . urlencode($id);
           }
         }
+
+        // NUEVOS: Filtros de Fecha (scalar)
+        if (!empty($_POST['fecha_inicio'])) {
+          $queryParams[] = 'fecha_inicio=' . urlencode($_POST['fecha_inicio']);
+        }
+        if (!empty($_POST['fecha_fin'])) {
+          $queryParams[] = 'fecha_fin=' . urlencode($_POST['fecha_fin']);
+        }
       }
+
       if (!empty($queryParams)) {
         $redirectUrl .= '?' . implode('&', $queryParams);
       }
+
       header('Location: ' . $redirectUrl);
       exit; // Es crucial salir después de la redirección.
     }
+    // --- Fin de Lógica PRG ---
+
 
     // Si la petición es GET, procesa los filtros desde la URL.
     $almacen_id_filtro = $_GET['almacen_id'] ?? [];
     $alimento_id_filtro = $_GET['alimento_id'] ?? [];
     $estado_id_filtro = $_GET['estado_id'] ?? [];
     $categoria_id_filtro = $_GET['categoria_id'] ?? [];
-    if (empty($almacen_id_filtro) && empty($alimento_id_filtro) && empty($estado_id_filtro) && empty($categoria_id_filtro)) {
+    $fecha_inicio_filtro = $_GET['fecha_inicio'] ?? null; // NUEVO
+    $fecha_fin_filtro = $_GET['fecha_fin'] ?? null;     // NUEVO
+
+    // Determina si hay algún filtro activo
+    $filtros_activos = !empty($almacen_id_filtro) || !empty($alimento_id_filtro) || !empty($estado_id_filtro) || !empty($categoria_id_filtro) || !empty($fecha_inicio_filtro) || !empty($fecha_fin_filtro);
+
+    if (!$filtros_activos) {
       $ordenes = $this->ordenDAO->getAllOrdenes();
     } else {
-      $ordenes = $this->ordenDAO->getOrdenesFiltradas($almacen_id_filtro, $alimento_id_filtro, $estado_id_filtro, $categoria_id_filtro);
+      $ordenes = $this->ordenDAO->getOrdenesFiltradas($almacen_id_filtro, $alimento_id_filtro, $estado_id_filtro, $categoria_id_filtro, $fecha_inicio_filtro, $fecha_fin_filtro);
     }
+
     // Enriquece las órdenes con nombres.
     return $this->enrichOrdenesWithNames($ordenes);
   }

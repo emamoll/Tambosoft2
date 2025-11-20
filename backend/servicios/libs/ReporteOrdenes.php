@@ -6,6 +6,54 @@ require_once __DIR__ . "/../../../backend/controladores/ordenController.php";
 // No necesitamos alimentoController aquí directamente si ordenController ya adjunta el precio
 // require_once __DIR__ . "/../../../backend/controladores/alimentoController.php";
 
+// ***************************************************************
+// INICIO: Clase PDF personalizada para incluir Logo y Pie de Página
+// ***************************************************************
+
+class PDF extends FPDF
+{
+    // Ruta al logo: desde backend/servicios/libs/ hasta frontend/img/logoChico.png
+    private $logoPath = "../../../frontend/img/logoChico.png";
+
+    // Cabecera de página
+    function Header()
+    {
+        // Logo (x=10, y=8, ancho=30mm)
+        // Se asume que el archivo de imagen es accesible desde esta ruta relativa.
+        if (file_exists($this->logoPath)) {
+            // Ajustar la posición y tamaño (x, y, w)
+            $this->Image($this->logoPath, 10, 8, 30);
+        }
+
+        // Mover el punto Y un poco más abajo para el inicio del contenido principal
+        $this->SetY(20);
+    }
+
+    // Pie de página
+    function Footer()
+    {
+        // Posición a 15 mm del final
+        $this->SetY(-15);
+
+        // 1. Número de página
+        $this->SetFont('Arial', 'I', 8);
+        $textoPagina = utf8_decode('Página ') . $this->PageNo() . '/{nb}';
+        // Ancho 0 (hasta el margen derecho), altura 5, texto, borde 0, salto de línea 0, alineación C (centrado).
+        $this->Cell(0, 5, $textoPagina, 0, 0, 'C');
+        $this->Ln(4); // Pequeño salto de línea para el texto adicional
+
+        // 2. Texto adicional del pie de página
+        $this->SetFont('Arial', '', 7);
+        $textoAdicional = utf8_decode('Reporte generado por TamboSoft - Sistema de Gestión de Alimentos');
+        $this->Cell(0, 5, $textoAdicional, 0, 0, 'C');
+    }
+}
+
+// ***************************************************************
+// FIN: Clase PDF personalizada
+// ***************************************************************
+
+
 $controllerOrden = new OrdenController();
 // $controllerAlimento = new AlimentoController(); // No se necesita si el precio ya viene adjunto
 
@@ -22,9 +70,14 @@ foreach ($ordenes as $orden) {
     }
 }
 
-$pdf = new FPDF();
+// CAMBIO: Usar la clase PDF personalizada y habilitar el alias para el número total de páginas
+$pdf = new PDF();
+$pdf->AliasNbPages(); // Habilita {nb} para el total de páginas
 $pdf->AddPage();
+// El Header() de la clase PDF se llama aquí y establece SetY(20)
+
 $pdf->SetFont('Arial', 'B', 14);
+// Ajusto el Cell a 10mm de altura. La posición Y está en 20mm, lo cual está bien.
 $pdf->Cell(0, 10, utf8_decode('Reporte de Órdenes Entregadas'), 0, 1, 'C');
 $pdf->Ln(5);
 
@@ -84,3 +137,5 @@ $pdf->Ln();
 ob_end_clean(); // Limpiar el buffer de salida
 $pdf->Output('I', 'Reporte de Ordenes Entregadas'); // Salida del PDF
 exit;
+
+?>

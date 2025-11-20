@@ -119,7 +119,7 @@ class OrdenDAO
   {
     $sql = "SELECT * FROM ordenes WHERE estado_id = ?";
     $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("s", $estado_id); // Se usa 's', pero debería ser 'i'. ¡Revisar!
+    $stmt->bind_param("i", $estado_id); // Corregido: 's' cambiado a 'i'
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -141,11 +141,11 @@ class OrdenDAO
     return $ordenes;
   }
 
-    public function getOrdenByCategoriaId($categoria_id)
+  public function getOrdenByCategoriaId($categoria_id)
   {
     $sql = "SELECT * FROM ordenes WHERE categoria_id = ?";
     $stmt = $this->conn->prepare($sql);
-    $stmt->bind_param("s", $categoria_id); // Se usa 's', pero debería ser 'i'. ¡Revisar!
+    $stmt->bind_param("i", $categoria_id); // Corregido: 's' cambiado a 'i'
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -252,14 +252,17 @@ class OrdenDAO
   }
 
   /**
-   * Obtiene una lista de órdenes filtradas por almacén, alimento y/o estado.
+   * Obtiene una lista de órdenes filtradas por almacén, alimento, estado, categoría y/o rango de fechas.
    *
    * @param array $almacen_id Array de IDs de almacenes.
    * @param array $alimento_id Array de IDs de alimentos.
    * @param array $estado_id Array de IDs de estados.
+   * @param array $categoria_id Array de IDs de categorías.
+   * @param string|null $fecha_inicio Fecha de inicio del rango (Y-m-d).
+   * @param string|null $fecha_fin Fecha de fin del rango (Y-m-d).
    * @return array Un array de objetos Orden que coinciden con los filtros.
    */
-  public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id, array $categoria_id)
+  public function getOrdenesFiltradas(array $almacen_id, array $alimento_id, array $estado_id, array $categoria_id, ?string $fecha_inicio = null, ?string $fecha_fin = null)
   {
     // Construye la consulta SQL dinámicamente.
     $sql = "SELECT * FROM ordenes WHERE 1=1";
@@ -292,6 +295,22 @@ class OrdenDAO
       $sql .= " AND categoria_id IN ($placeholders)";
       $params = array_merge($params, $categoria_id);
       $tipos .= str_repeat('i', count($categoria_id));
+    }
+
+    // NUEVO: Filtro por rango de fecha de actualización
+    if ($fecha_inicio && $fecha_fin) {
+      $sql .= " AND fecha_actualizacion BETWEEN ? AND ?";
+      $params[] = $fecha_inicio;
+      $params[] = $fecha_fin;
+      $tipos .= "ss";
+    } elseif ($fecha_inicio) {
+      $sql .= " AND fecha_actualizacion >= ?";
+      $params[] = $fecha_inicio;
+      $tipos .= "s";
+    } elseif ($fecha_fin) {
+      $sql .= " AND fecha_actualizacion <= ?";
+      $params[] = $fecha_fin;
+      $tipos .= "s";
     }
 
     $sql .= " ORDER BY id";

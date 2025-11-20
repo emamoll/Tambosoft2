@@ -144,29 +144,38 @@ $filtrosAplicados = [
       </thead>
       <tbody>
         <?php
-        $total_valor_economico = 0;
-        $total_valor_alimento = 0; // Nueva variable para el total de la columna
+        $total_valor_economico = 0; // Acumula el valor de TODAS las filas (Valor * Stock)
+        $total_valor_alimento_unicos = 0; // Acumulador para la fila de totales (Valor Total de Alimentos)
+        $alimentos_contados_por_id = []; // Array para asegurar que cada alimento se cuente solo una vez
         ?>
         <?php if (!empty($stock_almacenes)): ?>
           <?php foreach ($stock_almacenes as $sa): ?>
             <?php
             $almacen_nombre = $sa->getAlmacen_nombre() ?? 'Desconocido';
             $alimento_nombre = $sa->getAlimento_nombre() ?? 'Desconocido';
+            $alimento_id = $sa->getAlimento_id(); // Usar el ID como clave única
             $stock = $sa->getStock();
             $precio = $sa->getAlimento_precio() ?? 0;
 
-            $valor = $precio * $stock;
-            $total_valor_economico += $valor;
+            // Valor de la fila: Stock de ESTE campo * Precio Unitario. (E.g., 18 * $45,000 = $810,000)
+            $valor_fila_stock = $precio * $stock;
+            $total_valor_economico += $valor_fila_stock; // Suma el valor de la fila al total general del stock (correcto).
+        
+            // Valor Total del Alimento: Stock Total (todos los campos) * Precio Unitario
+            $total_alimento_en_todos_campos = $sa->getTotalStock() * $precio;
 
-            $total_alimento = $sa->getTotalStock() * $precio;
-            $total_valor_alimento += $total_alimento; // Acumula el valor de la nueva columna
+            // FIX para el total de la tabla: Acumular el valor total de cada alimento (en todos los campos) solo una vez.
+            if (!in_array($alimento_id, $alimentos_contados_por_id)) {
+              $total_valor_alimento_unicos += $total_alimento_en_todos_campos;
+              $alimentos_contados_por_id[] = $alimento_id;
+            }
             ?>
             <tr>
               <td><?= htmlspecialchars($almacen_nombre) ?></td>
               <td><?= htmlspecialchars($alimento_nombre) ?></td>
               <td><?= htmlspecialchars($stock) ?></td>
-              <td>$<?= htmlspecialchars(number_format($valor, 2)) ?></td>
-              <td>$<?= htmlspecialchars(number_format($total_alimento, 2)) ?></td>
+              <td>$<?= htmlspecialchars(number_format($precio, 2)) ?></td>
+              <td>$<?= htmlspecialchars(number_format($valor_fila_stock, 2)) ?></td>
             </tr>
           <?php endforeach; ?>
         <?php else: ?>
@@ -177,7 +186,7 @@ $filtrosAplicados = [
 
         <tr class="total-row">
           <td colspan="4" style="text-align: right; font-weight: bold;">Valor Total de Alimentos:</td>
-          <td style="font-weight: bold;">$<?= htmlspecialchars(number_format($total_valor_alimento, 2)) ?></td>
+          <td style="font-weight: bold;">$<?= htmlspecialchars(number_format($total_valor_economico, 2)) ?></td>
         </tr>
       </tbody>
     </table>
@@ -231,7 +240,6 @@ $filtrosAplicados = [
           </div>
           <div class="botones-container botones-filtros">
             <button type="submit" class="btn btn-primary" name="aplicar_filtros" value="true">Aplicar</button>
-            <!-- <button type="button" class="btn btn-primary" id="limpiarFiltrosBtn">Limpiar Filtros</button> -->
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>
       </div>
@@ -244,25 +252,25 @@ $filtrosAplicados = [
 
 
 
-      //   limpiarFiltrosBtn.addEventListener('click', function () {
-      //     // Desmarcar todos los checkboxes
-      //     const checkboxes = filtroForm.querySelectorAll('input[type="checkbox"]');
-      //     checkboxes.forEach(chk => chk.checked = false);
+      //  limpiarFiltrosBtn.addEventListener('click', function () {
+      //   // Desmarcar todos los checkboxes
+      //   const checkboxes = filtroForm.querySelectorAll('input[type="checkbox"]');
+      //   checkboxes.forEach(chk => chk.checked = false);
 
-      //     // Crear un input oculto para indicar que se están limpiando filtros
-      //     const inputReset = document.createElement('input');
-      //     inputReset.type = 'hidden';
-      //     inputReset.name = 'limpiar_filtros';
-      //     inputReset.value = 'true';
-      //     filtroForm.appendChild(inputReset);
+      //   // Crear un input oculto para indicar que se están limpiando filtros
+      //   const inputReset = document.createElement('input');
+      //   inputReset.type = 'hidden';
+      //   inputReset.name = 'limpiar_filtros';
+      //   inputReset.value = 'true';
+      //   filtroForm.appendChild(inputReset);
 
-      //     // Enviar el formulario
-      //     filtroForm.submit();
-      //   });
-      //   // Evitar reenvío al actualizar
-      //   if (window.history.replaceState) {
-      //     window.history.replaceState(null, null, window.location.href);
-      //   }
+      //   // Enviar el formulario
+      //   filtroForm.submit();
+      //  });
+      //  // Evitar reenvío al actualizar
+      //  if (window.history.replaceState) {
+      //   window.history.replaceState(null, null, window.location.href);
+      //  }
       // });
     })
 

@@ -83,7 +83,7 @@ foreach ($ordenes as $o) {
 <body class="bodyHome">
   <?php require_once __DIR__ . '../../secciones/header.php'; ?>
   <?php require_once __DIR__ . '../../secciones/navbar.php'; ?>
-  
+
 
   <div class="main">
     <h1 class="mensajeBienvenida" style="margin-top: -30px;">Bienvenido <?php echo $usuario->getUsername() ?></h1>
@@ -102,7 +102,9 @@ foreach ($ordenes as $o) {
               <div class="card mb-4">
                 <div class="card-body">
                   <h5 class="card-title">Valor total de stock</h5>
-                  <p class="card-text fs-3">$ 13,398,000.00</p>
+                  <p class="card-text fs-3">
+                    $<?= number_format($total_stock_value, 2, ',', '.') ?>
+                  </p>
                 </div>
               </div>
             </a>
